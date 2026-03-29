@@ -2856,6 +2856,10 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
             <div class="wiki-dl__term">Output</div>
             <div class="wiki-dl__desc">JSON array: 7 items (1A, 1B, 2A, 2B, 3, 4, 5) — каждый с label, subject, body.</div>
           </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Пост-обработка</div>
+            <div class="wiki-dl__desc">После парсинга JSON от GPT, все шаги проходят через SmartLead форматирование: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead игнорирует обычные переносы строк), длинные тире <code>—</code> → обычные дефисы <code>-</code> (совместимость с email-клиентами). Та же обработка применяется и в <code>god_sequence()</code>, и в <code>load_sequences_from_file()</code>.</div>
+          </div>
         </div>
 
         <h3>load_sequences_from_file() — Markdown Parser</h3>

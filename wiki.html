@@ -3015,6 +3015,10 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
             <div class="wiki-dl__term">Output</div>
             <div class="wiki-dl__desc">JSON array: 7 items (1A, 1B, 2A, 2B, 3, 4, 5) — each with label, subject, body.</div>
           </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Post-processing</div>
+            <div class="wiki-dl__desc">After parsing GPT's JSON, all steps go through SmartLead formatting: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead ignores plain newlines), em dashes <code>—</code> → regular dashes <code>-</code> (email client compatibility). Same formatting applied in both <code>god_sequence()</code> and <code>load_sequences_from_file()</code>.</div>
+          </div>
         </div>
 
         <h3>load_sequences_from_file() — Markdown Parser</h3>
