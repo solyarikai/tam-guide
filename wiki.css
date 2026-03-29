@@ -977,7 +977,7 @@
 /* ── STATE 1: Bottom bar (collapsed) ── */
 .chat-bar {
   position: fixed;
-  bottom: 0;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   width: min(640px, calc(100vw - 48px));
@@ -988,12 +988,11 @@
   gap: 10px;
   background: #fff;
   border: 1.5px solid #d5d0c8;
-  border-bottom: none;
-  border-radius: 14px 14px 0 0;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
   transition: opacity 0.3s, transform 0.3s;
 }
-[data-theme="dark"] .chat-bar { background: #1e1e1e; border-color: #444; }
+[data-theme="dark"] .chat-bar { background: #1e1e1e; border-color: #444; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
 .chat-bar.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(20px); }
 
 .chat-bar__input {
