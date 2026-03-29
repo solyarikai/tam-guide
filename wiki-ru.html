@@ -159,6 +159,11 @@
       </header>
 
 <!-- GETTING STARTED -->
+      <div class="wiki-group-header" id="group-getting-started">
+        <h2 class="wiki-group-header__title">Начало работы</h2>
+        <p class="wiki-group-header__desc">Что делает система, зачем она нужна и ключевые принципы проектирования за каждым решением.</p>
+      </div>
+
     <section id="overview" class="wiki-section">
         <h2>Обзор системы</h2>
         <p>Переиспользуемая система, которая запоминает <strong>всё</strong> о сборе TAM:</p>
@@ -188,6 +193,11 @@
     </section>
 
     <!-- PIPELINE -->
+      <div class="wiki-group-header" id="group-pipeline">
+        <h2 class="wiki-group-header__title">Пайплайн</h2>
+        <p class="wiki-group-header__desc">Как компании проходят через систему — от поиска до email-кампании. Шаги, чекпойнты, контроль расходов и источники данных.</p>
+      </div>
+
     <section id="pipeline-flow" class="wiki-section">
         <h2>Поток пайплайна — строго линейный, без пропусков</h2>
         <div class="pipeline-flow">
@@ -462,6 +472,11 @@
     </section>
 
     <!-- PROJECT CONTEXT -->
+      <div class="wiki-group-header" id="group-project-context">
+        <h2 class="wiki-group-header__title">Контекст проекта</h2>
+        <p class="wiki-group-header__desc">Конфигурация проекта, которая управляет поведением pipeline — описание ICP, сегменты, промпты классификации и маппинг аккаунтов.</p>
+      </div>
+
     <section id="project-context" class="wiki-section">
         <h2>Контекст проекта</h2>
         <p>Система сбора работает не в вакууме. Она читает существующее знание проекта для умных решений.</p>
@@ -576,6 +591,11 @@
     </section>
 
     <!-- DATABASE SCHEMA -->
+      <div class="wiki-group-header" id="group-database">
+        <h2 class="wiki-group-header__title">Схема базы данных</h2>
+        <p class="wiki-group-header__desc">Таблицы PostgreSQL, которые хранят всё — раны, компании, контакты, секвенсы и их связи.</p>
+      </div>
+
     <section id="gathering-runs" class="wiki-section">
         <h2>Таблица: gathering_runs</h2>
         <p>Каждое выполнение поиска = одна запись. Запоминает ТОЧНО, какие фильтры были применены.</p>
@@ -1263,6 +1283,11 @@ latest_analysis_segment  = Column(String(100))                 # cached segment<
     </section>
 
     <!-- BLACKLIST & GATES -->
+      <div class="wiki-group-header" id="group-blacklist">
+        <h2 class="wiki-group-header__title">Блэклист и Gates</h2>
+        <p class="wiki-group-header__desc">Как система предотвращает повторный аутрич и обеспечивает человеческое одобрение на каждом платном шаге.</p>
+      </div>
+
     <section id="blacklist-design" class="wiki-section">
         <h2>Блэклист — Project-Scoped Fast Lookup</h2>
         <h3>Критическое решение по дизайну: Project-Scoped Blacklisting</h3>
@@ -1386,6 +1411,11 @@ WHERE domain = ANY(:domains) AND project_id = :pid AND status != 'REJECTED'</pre
     </section>
 
     <!-- ADAPTERS -->
+      <div class="wiki-group-header" id="group-adapter">
+        <h2 class="wiki-group-header__title">Система адаптеров</h2>
+        <p class="wiki-group-header__desc">Подключаемые коннекторы к источникам данных — Clay, Apollo, Google Sheets и другие. Все источники используют единый интерфейс.</p>
+      </div>
+
     <section id="adapter-pattern" class="wiki-section">
         <h2>MCP Adapter Pattern</h2>
         <h3>Базовый класс</h3>
@@ -1565,6 +1595,11 @@ async def execute(self, filters, on_progress=None):
     </section>
 
     <!-- SERVICE & API -->
+      <div class="wiki-group-header" id="group-service">
+        <h2 class="wiki-group-header__title">Сервис и API</h2>
+        <p class="wiki-group-header__desc">Оркестрация на бэкенде — GatheringService, REST-эндпоинты и инфраструктура деплоя.</p>
+      </div>
+
     <section id="gathering-service" class="wiki-section">
         <h2>GatheringService — Оркестратор</h2>
         <pre>class GatheringService:
@@ -1730,6 +1765,11 @@ GET    /api/pipeline/gathering/blacklist-check                -- check domains a
     </section>
 
     <!-- IMPLEMENTATION -->
+      <div class="wiki-group-header" id="group-implementation">
+        <h2 class="wiki-group-header__title">Реализация</h2>
+        <p class="wiki-group-header__desc">Стратегия миграции, подходы к тестированию и практические шаги для вывода системы в продакшен.</p>
+      </div>
+
     <section id="migration" class="wiki-section">
         <h2>Миграция существующих EasyStaff данных</h2>
         <p>Существующие JSON файлы из Dubai agency gathering ДОЛЖНЫ быть импортированы в новую систему.</p>
@@ -1853,6 +1893,11 @@ GET    /api/pipeline/gathering/blacklist-check                -- check domains a
     </section>
 
     <!-- EDGE CASES -->
+      <div class="wiki-group-header" id="group-edge-cases">
+        <h2 class="wiki-group-header__title">Граничные случаи</h2>
+        <p class="wiki-group-header__desc">Критические сценарии, которые система должна обрабатывать — дубликаты, сбои, rate limits и проблемы целостности данных.</p>
+      </div>
+
     <section id="edge-cases" class="wiki-section">
         <h2>Критические граничные случаи и решения по дизайну</h2>
 
@@ -1919,6 +1964,11 @@ gathering_run_id = Column(Integer, ForeignKey('gathering_runs.id'))</pre>
     </section>
 
     <!-- REAL-WORLD EXAMPLE -->
+      <div class="wiki-group-header" id="group-example">
+        <h2 class="wiki-group-header__title">Реальный пример</h2>
+        <p class="wiki-group-header__desc">Полный пошаговый разбор реального gathering run — EasyStaff Global, от первого поиска до запуска email-кампании.</p>
+      </div>
+
     <section id="easystaff" class="wiki-section">
         <h2>Реальный пример: EasyStaff Global (Проект 9)</h2>
         <p>Этот пайплайн использовался для сбора, анализа и проверки 7,900+ целевых компаний через 20+ городов. Пайплайн создал 8 новых SmartLead кампаний (regional splits: US, UK, Gulf, India, APAC, Australia, LatAm-Africa, плюс варианты). EasyStaff Global имеет ~170 кампаний всего — большинство были созданы до этого пайплайна, через ручные процессы.</p>
@@ -2199,6 +2249,11 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
     </section>
 
       <!-- CODE REFERENCE -->
+      <div class="wiki-group-header" id="group-universal-pipeline">
+        <h2 class="wiki-group-header__title">Universal Pipeline</h2>
+        <p class="wiki-group-header__desc">Полный справочник по коду <code>universal_pipeline.py</code> — каждая функция, конфиг, шаг и CLI-флаг с исходным кодом и подробными объяснениями.</p>
+      </div>
+
       <section class="wiki-section" id="code-overview">
         <h2>Обзор скрипта <a href="#code-overview" class="anchor-link">#</a></h2>
         <p><code>universal_pipeline.py</code> — продакшн-реализация всего, что описано в этой вики. Универсальный pipeline для сбора лидов — работает с любым проектом. Вся конфигурация (сегменты, email-копия, аккаунты) загружается из БД. Ничего не захардкожено на проект.</p>

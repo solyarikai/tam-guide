@@ -159,6 +159,11 @@
       </header>
 
       <!-- GETTING STARTED -->
+      <div class="wiki-group-header" id="group-getting-started">
+        <h2 class="wiki-group-header__title">Getting Started</h2>
+        <p class="wiki-group-header__desc">What the system does, why it exists, and core design principles behind every decision.</p>
+      </div>
+
       <section class="wiki-section" id="overview">
         <h2>What We're Building <a href="#overview" class="anchor-link">#</a></h2>
         <p>A reusable system that remembers <strong>everything</strong> about TAM gathering:</p>
@@ -214,6 +219,11 @@
       </section>
 
       <!-- PIPELINE -->
+      <div class="wiki-group-header" id="group-pipeline">
+        <h2 class="wiki-group-header__title">Pipeline</h2>
+        <p class="wiki-group-header__desc">How companies flow through the system — from search to email campaign. Steps, checkpoints, cost gates, and data sources.</p>
+      </div>
+
       <section class="wiki-section" id="pipeline-flow">
         <h2>Pipeline Flow <a href="#pipeline-flow" class="anchor-link">#</a></h2>
         <p>Strict linear progression, no skipping:</p>
@@ -504,6 +514,11 @@
       </section>
 
       <!-- PROJECT CONTEXT -->
+      <div class="wiki-group-header" id="group-project-context">
+        <h2 class="wiki-group-header__title">Project Context</h2>
+        <p class="wiki-group-header__desc">Per-project configuration that drives pipeline behavior — ICP definitions, segments, classification prompts, and account mappings.</p>
+      </div>
+
       <section class="wiki-section" id="project-context-section">
         <h2>Project Context (DB fields) <a href="#project-context-section" class="anchor-link">#</a></h2>
         <p>The gathering system doesn't operate in a vacuum. It reads the project's existing knowledge to make smart decisions.</p>
@@ -626,6 +641,11 @@
       </section>
 
       <!-- DATABASE SCHEMA -->
+      <div class="wiki-group-header" id="group-database">
+        <h2 class="wiki-group-header__title">Database Schema</h2>
+        <p class="wiki-group-header__desc">PostgreSQL tables that store everything — runs, companies, contacts, sequences, and their relationships.</p>
+      </div>
+
       <section class="wiki-section" id="gathering-runs">
         <h2>gathering_runs Table <a href="#gathering-runs" class="anchor-link">#</a></h2>
         <p>Every search execution = one record. Remembers EXACTLY which filters were applied.</p>
@@ -1295,6 +1315,11 @@ latest_analysis_segment  = Column(String(100))</code></pre>
       </section>
 
       <!-- BLACKLIST & GATES -->
+      <div class="wiki-group-header" id="group-blacklist">
+        <h2 class="wiki-group-header__title">Blacklist &amp; Gates</h2>
+        <p class="wiki-group-header__desc">How the system prevents duplicate outreach and enforces human approval at every cost-incurring step.</p>
+      </div>
+
       <section class="wiki-section" id="blacklist-design">
         <h2>Project-Scoped Blacklisting <a href="#blacklist-design" class="anchor-link">#</a></h2>
         <p><strong>Problem:</strong> Company X is being contacted by EasyStaff RU (project 40, payroll offer). Inxy (project 10, crypto payments) starts gathering and finds Company X. Should it be blacklisted?</p>
@@ -1413,6 +1438,11 @@ CREATE INDEX ON active_campaign_domains(project_id);</code></pre>
       </section>
 
       <!-- ADAPTER SYSTEM -->
+      <div class="wiki-group-header" id="group-adapter">
+        <h2 class="wiki-group-header__title">Adapter System</h2>
+        <p class="wiki-group-header__desc">Pluggable data source connectors — Clay, Apollo, Google Sheets, and more. All sources share the same interface.</p>
+      </div>
+
       <section class="wiki-section" id="adapter-pattern">
         <h2>MCP Adapter Pattern & Base Class <a href="#adapter-pattern" class="anchor-link">#</a></h2>
         <p><strong>Critical design decision:</strong> The DB is source-agnostic. It does NOT know about Apollo, Clay, or any specific platform. Adding a new source = new adapter class + register. Zero DB changes.</p>
@@ -1590,6 +1620,11 @@ class IndeedJobsAdapter(GatheringAdapter):
       </section>
 
       <!-- SERVICE & API -->
+      <div class="wiki-group-header" id="group-service">
+        <h2 class="wiki-group-header__title">Service &amp; API</h2>
+        <p class="wiki-group-header__desc">Backend orchestration layer — GatheringService, REST endpoints, and deployment infrastructure.</p>
+      </div>
+
       <section class="wiki-section" id="gathering-service">
         <h2>GatheringService Orchestrator <a href="#gathering-service" class="anchor-link">#</a></h2>
         <pre><code>class GatheringService:
@@ -1794,6 +1829,11 @@ class IndeedJobsAdapter(GatheringAdapter):
       </section>
 
       <!-- IMPLEMENTATION -->
+      <div class="wiki-group-header" id="group-implementation">
+        <h2 class="wiki-group-header__title">Implementation</h2>
+        <p class="wiki-group-header__desc">Migration strategy, testing approaches, and practical steps for bringing the system to production.</p>
+      </div>
+
       <section class="wiki-section" id="migration">
         <h2>Migration from Existing Data <a href="#migration" class="anchor-link">#</a></h2>
         <p><strong>What exists:</strong></p>
@@ -1911,6 +1951,11 @@ class IndeedJobsAdapter(GatheringAdapter):
       </section>
 
       <!-- EDGE CASES -->
+      <div class="wiki-group-header" id="group-edge-cases">
+        <h2 class="wiki-group-header__title">Edge Cases</h2>
+        <p class="wiki-group-header__desc">Critical scenarios the system must handle — duplicates, failures, rate limits, and data integrity issues.</p>
+      </div>
+
       <section class="wiki-section" id="edge-cases">
         <h2>8 Critical Edge Cases <a href="#edge-cases" class="anchor-link">#</a></h2>
         <p>Design decisions and solutions for complex scenarios:</p>
@@ -2042,6 +2087,11 @@ ORDER BY avg_target_rate DESC;</code></pre>
       </section>
 
       <!-- REAL-WORLD EXAMPLE -->
+      <div class="wiki-group-header" id="group-example">
+        <h2 class="wiki-group-header__title">Real-World Example</h2>
+        <p class="wiki-group-header__desc">Full walkthrough of a real gathering run — EasyStaff Global, from initial search to email campaign launch.</p>
+      </div>
+
       <section class="wiki-section" id="easystaff">
         <h2>EasyStaff Global: 11-Step Real-World Story <a href="#easystaff" class="anchor-link">#</a></h2>
         <p>This pipeline was used to gather, analyze, and verify 7,900+ target companies across 20+ cities. Produced 8 new SmartLead campaigns (regional splits: US, UK, Gulf, India, APAC, Australia, LatAm-Africa). EasyStaff Global has ~170 campaigns total — most were created before this pipeline existed, via manual processes.</p>
@@ -2359,6 +2409,11 @@ ORDER BY avg_target_rate DESC;</code></pre>
       </section>
 
       <!-- CODE REFERENCE -->
+      <div class="wiki-group-header" id="group-universal-pipeline">
+        <h2 class="wiki-group-header__title">Universal Pipeline</h2>
+        <p class="wiki-group-header__desc">Complete code reference for <code>universal_pipeline.py</code> — every function, config, step, and CLI flag documented with source code and detailed explanations.</p>
+      </div>
+
       <section class="wiki-section" id="code-overview">
         <h2>Script Overview <a href="#code-overview" class="anchor-link">#</a></h2>
         <p><code>universal_pipeline.py</code> is the production implementation of everything described in this wiki. A universal lead generation pipeline — works with any project. All configuration (segments, email copy, accounts) is loaded from the database. Nothing is hardcoded per project.</p>
