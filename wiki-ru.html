@@ -3553,9 +3553,15 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
 
   <script>
   (function() {
-    const MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+    const MODELS = [
+      'qwen/qwen3-coder:free',
+      'nvidia/nemotron-3-super-120b-a12b:free',
+      'nvidia/nemotron-3-nano-30b-a3b:free',
+    ];
+    let currentModelIdx = 0;
     const API_KEY = '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';
     const MAX_TOKENS = 1024;
+    const MAX_CONTEXT_CHARS = 15000;
 
     const bar = document.getElementById('chatBar');
     const barInput = document.getElementById('chatBarInput');
@@ -3623,7 +3629,11 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       const content = document.querySelector('.wiki-content');
       if (!content) return '';
       let text = content.innerText || content.textContent || '';
-      return text.replace(/\n{3,}/g, '\n\n').trim();
+      text = text.replace(/\n{3,}/g, '\n\n').trim();
+      if (text.length > MAX_CONTEXT_CHARS) {
+        text = text.slice(0, MAX_CONTEXT_CHARS) + '\n\n[... context truncated for brevity ...]';
+      }
+      return text;
     }
 
     function addMessage(role, text) {
@@ -3651,6 +3661,19 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     }
     function removeTyping() { const e = document.getElementById('chatTyping'); if (e) e.remove(); }
 
+    async function tryModel(modelId, msgs) {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': location.href },
+        body: JSON.stringify({ model: modelId, messages: msgs, max_tokens: MAX_TOKENS, stream: true }),
+      });
+      if (!res.ok) {
+        const errText = (await res.text()).slice(0, 200);
+        throw new Error(`${modelId} → ${res.status}: ${errText}`);
+      }
+      return res;
+    }
+
     async function sendMessage() {
       const text = inputEl.value.trim();
       if (!text || isStreaming) return;
@@ -3662,15 +3685,23 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       showTyping();
 
       try {
-        const sys = `Ты — полезный ассистент, который отвечает на вопросы об архитектуре TAM Gathering — системе генерации лидов. У тебя в контексте полная документация вики. Отвечай чётко и по делу, ссылаясь на конкретные функции, шаги и концепции. Если что-то не описано в вики — скажи об этом. Отвечай на том языке, на котором пишет пользователь.\n\n=== СОДЕРЖИМОЕ ВИКИ ===\n${getWikiContext()}`;
+        const sys = `Ты — полезный ассистент, который отвечает на вопросы об архитектуре TAM Gathering — системе генерации лидов. У тебя в контексте документация вики. Отвечай чётко и по делу, ссылаясь на конкретные функции, шаги и концепции. Если что-то не описано в вики — скажи об этом. Отвечай на том языке, на котором пишет пользователь.\n\n=== СОДЕРЖИМОЕ ВИКИ ===\n${getWikiContext()}`;
         const msgs = [{ role: 'system', content: sys }, ...history];
 
-        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': location.href },
-          body: JSON.stringify({ model: MODEL, messages: msgs, max_tokens: MAX_TOKENS, stream: true }),
-        });
-        if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0,200)}`);
+        let res = null;
+        let lastErr = null;
+        for (let i = 0; i < MODELS.length; i++) {
+          const idx = (currentModelIdx + i) % MODELS.length;
+          try {
+            res = await tryModel(MODELS[idx], msgs);
+            currentModelIdx = idx;
+            break;
+          } catch (e) {
+            lastErr = e;
+            console.warn('Model failed, trying next:', e.message);
+          }
+        }
+        if (!res) throw lastErr || new Error('All models failed');
 
         removeTyping();
         const botDiv = addMessage('bot', '');
