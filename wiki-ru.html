@@ -3571,13 +3571,11 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     let isStreaming = false;
     let panelOpen = false;
 
-    const wikiContent = document.querySelector('.wiki-content');
-
     function openPanel() {
       panelOpen = true;
       panel.classList.add('open');
       bar.classList.add('hidden');
-      if (wikiContent) wikiContent.classList.add('chat-pushed');
+      document.body.classList.add('chat-pushed');
       if (history.length === 0) {
         addMessage('system', 'Задавай любые вопросы по архитектуре TAM Gathering. У меня весь контент вики в контексте.');
       }
@@ -3588,7 +3586,7 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       panelOpen = false;
       panel.classList.remove('open');
       bar.classList.remove('hidden');
-      if (wikiContent) wikiContent.classList.remove('chat-pushed');
+      document.body.classList.remove('chat-pushed');
     }
 
     closeBtn.addEventListener('click', closePanel);

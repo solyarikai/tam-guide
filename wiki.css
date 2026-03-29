@@ -1044,12 +1044,26 @@
 .chat-panel.open { transform: translateX(0); }
 [data-theme="dark"] .chat-panel { background: #1a1a1a; border-left-color: #4a7a4a; }
 
-/* Content shrinks when chat is open */
-.wiki-content {
+/* Everything shrinks when chat is open — applied to body */
+body.chat-pushed .site-header,
+body.chat-pushed .wiki-layout {
+  margin-right: var(--chat-width, 400px);
   transition: margin-right 0.3s ease;
 }
-.wiki-content.chat-pushed {
-  margin-right: var(--chat-width, 400px);
+.site-header,
+.wiki-layout {
+  transition: margin-right 0.3s ease;
+}
+
+/* Tables adapt to narrower space */
+body.chat-pushed .wiki-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+body.chat-pushed .wiki-content pre {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 /* Resize handle */
@@ -1221,5 +1235,6 @@
 @media (max-width: 900px) {
   .chat-panel { width: 100vw !important; }
   .chat-bar { width: calc(100vw - 24px); }
-  .wiki-content.chat-pushed { margin-right: 0; }
+  body.chat-pushed .site-header,
+  body.chat-pushed .wiki-layout { margin-right: 0; }
 }

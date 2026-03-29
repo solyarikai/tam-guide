@@ -3732,13 +3732,11 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     let panelOpen = false;
 
     // ── Open panel ──
-    const wikiContent = document.querySelector('.wiki-content');
-
     function openPanel() {
       panelOpen = true;
       panel.classList.add('open');
       bar.classList.add('hidden');
-      if (wikiContent) wikiContent.classList.add('chat-pushed');
+      document.body.classList.add('chat-pushed');
       if (history.length === 0) {
         addMessage('system', 'Ask me anything about the TAM Gathering Architecture. I have the full wiki content as context.');
       }
@@ -3749,7 +3747,7 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       panelOpen = false;
       panel.classList.remove('open');
       bar.classList.remove('hidden');
-      if (wikiContent) wikiContent.classList.remove('chat-pushed');
+      document.body.classList.remove('chat-pushed');
     }
 
     closeBtn.addEventListener('click', closePanel);
