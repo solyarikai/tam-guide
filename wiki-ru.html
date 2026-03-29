@@ -3551,9 +3551,8 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
   <script>
   (function() {
     const CHAT_CONFIG = {
-      model: 'anthropic/claude-sonnet-4-20250514',
+      model: 'google/gemini-2.0-flash-exp:free',
       maxTokens: 1024,
-      storageKey: 'tam_wiki_openrouter_key',
       lang: 'ru',
     };
 
@@ -3565,14 +3564,13 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     const sendBtn = document.getElementById('chatSend');
     const inputRow = document.getElementById('chatInputRow');
 
-    let apiKey = localStorage.getItem(CHAT_CONFIG.storageKey) || '';
+    const apiKey = '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';
     let history = [];
     let isStreaming = false;
 
     fab.addEventListener('click', () => {
       panel.classList.toggle('open');
-      if (panel.classList.contains('open') && !apiKey) showKeyPrompt();
-      if (panel.classList.contains('open') && apiKey && history.length === 0) showWelcome();
+      if (panel.classList.contains('open') && history.length === 0) showWelcome();
       if (panel.classList.contains('open')) inputEl.focus();
     });
     closeBtn.addEventListener('click', () => panel.classList.remove('open'));
@@ -3581,40 +3579,12 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       addMessage('system', 'Задавай любые вопросы по архитектуре TAM Gathering. У меня весь контент вики в контексте.');
     }
 
-    function showKeyPrompt() {
-      inputRow.style.display = 'none';
-      messagesEl.innerHTML = '';
-      const div = document.createElement('div');
-      div.className = 'chat-key-prompt';
-      div.innerHTML = `
-        <label>Введи <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--color-primary)">OpenRouter API ключ</a> чтобы начать. Ключ хранится только в твоём браузере.</label>
-        <input type="password" id="chatKeyInput" placeholder="sk-or-v1-..." />
-        <button id="chatKeySave">Подключить</button>
-      `;
-      messagesEl.appendChild(div);
-      setTimeout(() => {
-        document.getElementById('chatKeySave').addEventListener('click', saveKey);
-        document.getElementById('chatKeyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveKey(); });
-      }, 0);
-    }
-
-    function saveKey() {
-      const val = document.getElementById('chatKeyInput').value.trim();
-      if (!val) return;
-      apiKey = val;
-      localStorage.setItem(CHAT_CONFIG.storageKey, apiKey);
-      messagesEl.innerHTML = '';
-      inputRow.style.display = '';
-      showWelcome();
-      inputEl.focus();
-    }
-
     function getWikiContext() {
       const content = document.querySelector('.wiki-content');
       if (!content) return '';
       let text = content.innerText || content.textContent || '';
       text = text.replace(/\n{3,}/g, '\n\n').trim();
-      if (text.length > 60000) text = text.substring(0, 60000) + '\n\n[... обрезано]';
+      // Gemini Flash has 1M context — no truncation needed
       return text;
     }
 
@@ -3739,14 +3709,7 @@ ${wikiContext}`;
 
       } catch (err) {
         removeTyping();
-        if (err.message.includes('401') || err.message.includes('403')) {
-          addMessage('system', 'Неверный API ключ. Сейчас попрошу заново.');
-          apiKey = '';
-          localStorage.removeItem(CHAT_CONFIG.storageKey);
-          setTimeout(() => showKeyPrompt(), 1500);
-        } else {
-          addMessage('system', `Ошибка: ${err.message}`);
-        }
+        addMessage('system', `Ошибка: ${err.message}`);
       } finally {
         isStreaming = false;
         sendBtn.disabled = false;
