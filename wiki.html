@@ -3713,7 +3713,7 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
 
   <script>
   (function() {
-    const MODEL = 'nvidia/llama-3.3-nemotron-super-49b-v1:free';
+    const MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
     const API_KEY = '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';
     const MAX_TOKENS = 1024;
 
@@ -3732,10 +3732,13 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     let panelOpen = false;
 
     // ── Open panel ──
+    const wikiContent = document.querySelector('.wiki-content');
+
     function openPanel() {
       panelOpen = true;
       panel.classList.add('open');
       bar.classList.add('hidden');
+      if (wikiContent) wikiContent.classList.add('chat-pushed');
       if (history.length === 0) {
         addMessage('system', 'Ask me anything about the TAM Gathering Architecture. I have the full wiki content as context.');
       }
@@ -3746,6 +3749,7 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       panelOpen = false;
       panel.classList.remove('open');
       bar.classList.remove('hidden');
+      if (wikiContent) wikiContent.classList.remove('chat-pushed');
     }
 
     closeBtn.addEventListener('click', closePanel);

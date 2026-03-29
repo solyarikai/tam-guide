@@ -1026,7 +1026,7 @@
 .chat-bar__send:hover { background: #1e3a1e; }
 .chat-bar__send svg { width: 18px; height: 18px; }
 
-/* ── STATE 2: Side panel (expanded) ── */
+/* ── STATE 2: Side panel (expanded, pushes content) ── */
 .chat-panel {
   position: fixed;
   top: 0;
@@ -1035,15 +1035,22 @@
   height: 100vh;
   background: #EDEAE6;
   border-left: 2px solid #2D4A2D;
-  z-index: 1000;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
   transition: transform 0.3s ease;
-  box-shadow: -4px 0 24px rgba(0,0,0,0.12);
 }
 .chat-panel.open { transform: translateX(0); }
 [data-theme="dark"] .chat-panel { background: #1a1a1a; border-left-color: #4a7a4a; }
+
+/* Content shrinks when chat is open */
+.wiki-content {
+  transition: margin-right 0.3s ease;
+}
+.wiki-content.chat-pushed {
+  margin-right: var(--chat-width, 400px);
+}
 
 /* Resize handle */
 .chat-resize {
@@ -1214,4 +1221,5 @@
 @media (max-width: 900px) {
   .chat-panel { width: 100vw !important; }
   .chat-bar { width: calc(100vw - 24px); }
+  .wiki-content.chat-pushed { margin-right: 0; }
 }
