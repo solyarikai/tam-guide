@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Project Context & Operator Input Modes — TAM Gathering Architecture Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index.html">All Lessons</a>
+    <a href="lesson-1.html">Lesson 1</a>
+    <a href="lesson-2.html" class="active">Lesson 2</a>
+    <a href="lesson-3.html">Lesson 3</a>
+    <a href="lesson-4.html">Lesson 4</a>
+    <a href="lesson-5.html">Lesson 5</a>
+    <a href="lesson-6.html">Lesson 6</a>
+    <a href="lesson-7.html">Lesson 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-2.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+    <a href="lesson-2-ru.html" class="lang-switch__btn">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 28%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Lesson 2</span>
+    </div>
+    <h1>Project Context & Operator Input Modes</h1>
+    <p class="body-lg">Learn what the system knows about your project, the four ways operators can request a gathering run, and how the system connects runs to segments for tracking and intelligence.</p>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Scenario</div>
+    <p>An operator opens the TAM Gathering System, wants to find 5000 digital agencies in the UAE, and starts typing a request. The system instantly knows about the project's ICP, competitors, case studies, existing contacts, and past filtering attempts. It uses all that context to map the operator's simple request into precise source filters — without the operator having to understand Apollo's seniority codes or Clay's company size ranges.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">What You'll Learn</div>
+    <ul>
+      <li>The 10 data sources the system reads from each project</li>
+      <li>How ICP, segments, and case studies inform gathering decisions</li>
+      <li>Four operator input modes: Natural Language, Structured Filters, Lookalike, Expand/Repeat</li>
+      <li>How gathering runs link to segments for TAM tracking</li>
+      <li>The end-to-end flow when an operator gives natural language input</li>
+    </ul>
+  </div>
+
+  <h2>What The System Knows About Each Project</h2>
+
+  <p>The gathering system doesn't operate in a vacuum. It reads the project's existing knowledge to make smart decisions.</p>
+
+  <h3>Project Context (already exists in DB — reuse, don't rebuild)</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Table/Field</th>
+          <th>How Gathering Uses It</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ICP Definition</strong></td>
+          <td><code>projects.target_segments</code>, <code>projects.target_industries</code></td>
+          <td>→ AI maps to source-specific filters. "Agencies &lt;50 emp in UAE" becomes Apollo location + seniority + size filters</td>
+        </tr>
+        <tr>
+          <td><strong>Segments</strong></td>
+          <td><code>kb_segments</code> (flexible data JSON per segment)</td>
+          <td>→ Each segment can have its OWN gathering configuration. Segment "Dubai Agencies" → apollo.companies.emulator with UAE filters. Segment "AU-PH Corridor" → clay.people.emulator with Filipino language filters</td>
+        </tr>
+        <tr>
+          <td><strong>Products</strong></td>
+          <td><code>kb_products</code> (what we sell)</td>
+          <td>→ AI analysis prompt: "Does this company need {product}?"</td>
+        </tr>
+        <tr>
+          <td><strong>Competitors</strong></td>
+          <td><code>kb_competitors</code> (domains, strengths, weaknesses)</td>
+          <td>→ Auto-blacklist competitor domains. Don't gather companies already using competitor</td>
+        </tr>
+        <tr>
+          <td><strong>Case Studies</strong></td>
+          <td><code>kb_case_studies</code> (client industry, size, challenge, solution)</td>
+          <td>→ Lookalike search: "Find companies similar to these customers"</td>
+        </tr>
+        <tr>
+          <td><strong>Company Profile</strong></td>
+          <td><code>kb_company_profile</code> (who WE are)</td>
+          <td>→ AI analysis context: "We are {company}, we offer {products}"</td>
+        </tr>
+        <tr>
+          <td><strong>Project Knowledge</strong></td>
+          <td><code>project_knowledge</code> (category=icp/outreach/contacts/gtm)</td>
+          <td>→ Rich ICP context, outreach rules, GTM strategy</td>
+        </tr>
+        <tr>
+          <td><strong>Existing Contacts</strong></td>
+          <td><code>contacts</code> + <code>campaigns</code> (CRM)</td>
+          <td>→ Blacklist: don't re-target companies already in outreach</td>
+        </tr>
+        <tr>
+          <td><strong>Enterprise Blacklist</strong></td>
+          <td><code>project_blacklist</code> + <code>enterprise_blacklist.json</code></td>
+          <td>→ Hard exclusion before any processing</td>
+        </tr>
+        <tr>
+          <td><strong>Past Gathering Runs</strong></td>
+          <td><code>gathering_runs</code> (this system)</td>
+          <td>→ "Don't repeat filters that yielded &lt;5% target rate"</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Operator Input Modes</h2>
+
+  <p>When an operator (or MCP agent) starts a gathering run, they can provide input in several ways:</p>
+
+  <h3>Mode 1: Natural Language (easiest, MCP-optimized)</h3>
+
+  <p><strong>Example:</strong> "Find 5000 digital agencies in UAE with &lt;100 employees"</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ AI maps to filters using project's ICP + segment context<br>→ Suggests best source (Apollo for broad, Clay for specific)<br>→ Returns estimated results + cost</p>
+  </div>
+
+  <h3>Mode 2: Structured Filters (experienced operators, precise)</h3>
+
+  <p><strong>Example:</strong></p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Show JSON
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>{
+  "source_type": "apollo.people.emulator",
+  "filters": {
+    "person_locations": ["Dubai, United Arab Emirates"],
+    "person_seniorities": ["founder", "c_suite"],
+    "organization_num_employees_ranges": ["1,10", "11,50", "51,100"]
+  }
+}</code></pre>
+    </div>
+  </details>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Bypasses AI mapping, direct execution</p>
+  </div>
+
+  <h3>Mode 3: Lookalike (from case studies or existing customers)</h3>
+
+  <p><strong>Example:</strong> "Find companies similar to: frizzon.ae, 10xbrand.com, zopreneurs.com"</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Reverse-engineer patterns (industry, size, location, tech stack)<br>→ Generate filters that match the pattern<br>→ Already partially exists: <code>reverse_engineering_service.py</code></p>
+  </div>
+
+  <h3>Mode 4: Expand/Repeat (iterate on previous runs)</h3>
+
+  <p><strong>Example:</strong> "Run the same search as gathering_run #42 but for Singapore instead of Dubai"</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Copy filters, modify location<br>→ Filter dedup (hash check) prevents accidental duplicates</p>
+  </div>
+
+  <h2>Gathering Run ↔ Segment Link</h2>
+
+  <p>Each gathering run CAN be linked to a specific segment:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Show code
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs.segment_id  FK(kb_segments) NULL</code></pre>
+    </div>
+  </details>
+
+  <p>This lets the system:</p>
+
+  <ul>
+    <li><strong>Track which segments have been gathered</strong> (and which haven't)</li>
+    <li><strong>Calculate segment-level TAM:</strong> "Dubai Agencies segment: 5,150 companies found, 1,200 analyzed, 340 targets, 89 enriched"</li>
+    <li><strong>Suggest under-gathered segments:</strong> "AU-PH Corridor has 0 gathering runs — consider starting"</li>
+  </ul>
+
+  <h2>How It All Connects: Natural Language to Filters</h2>
+
+  <p>When an operator gives natural language input, here's the 10-step journey:</p>
+
+  <ol>
+    <li><strong>Operator speaks:</strong> "Find 5000 digital agencies in UAE with &lt;100 employees"</li>
+    <li><strong>System loads project context:</strong> Fetches ICP, segments, products, competitors, case studies from KB</li>
+    <li><strong>AI maps intent to dimensions:</strong> "agencies" = industry tag, "UAE" = location, "&lt;100 employees" = size bucket</li>
+    <li><strong>AI chooses best source:</strong> Looks at source_label + historical success rate. Apollo's "companies.emulator" → good for broad searches. Clay's "people.api" → better for founder-specific targeting. Picks Apollo.</li>
+    <li><strong>AI generates canonical filters:</strong> Reads Apollo's filter schema from source_config, translates "digital agencies in UAE" to apollo-specific filters: <code>{"company_industries": ["software", "digital_marketing"], "company_locations": ["Dubai, UAE"], "organization_num_employees_ranges": ["1,10", "11,50", "51,100"]}</code></li>
+    <li><strong>System checks filter_hash:</strong> Computes SHA256 of sorted canonical JSON. Checks if this filter combination has ever run before. If yes, shows last run's stats: "Similar filters found 3,847 companies last week; 412 passed analysis (10.7% target rate)"</li>
+    <li><strong>System estimates cost + results:</strong> "Estimated 4,200 results, Apollo will cost ~$210 (at $0.05/company), Clay would cost ~$840. Use Apollo."</li>
+    <li><strong>System shows preview:</strong> "Ready to run? Gathering run will: source=apollo.companies.emulator, filters={...}, estimated result 4,200, cost $210. Approve?"</li>
+    <li><strong>Operator approves.</strong> System creates <code>gathering_runs</code> record with status=pending, filters=JSON, filter_hash=SHA256, segment_id=(optional)</li>
+    <li><strong>Execute and track:</strong> Gathers raw results, dedups against discovered_companies, blacklists, and progresses through the pipeline — all using the filters stored in the gathering_run record.</li>
+  </ol>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Key Takeaway</div>
+    <p>Project context isn't just decorative — it's the engine behind smart defaults. The system reads 10 data sources (ICP, segments, products, competitors, case studies, company profile, project knowledge, existing contacts, blacklists, past runs), and uses them to map operator intent into precise, source-specific filters. Operators can request in 4 ways (natural language, structured filters, lookalike, expand/repeat), and each gathering run can be linked to a segment for TAM tracking. This design makes the system both operator-friendly and deterministic: the filters are always explicit, always stored, and always reproducible.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <div class="lesson-nav">
+    <a href="lesson-1.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Previous Lesson</span>
+      <span class="lesson-nav__title">The Big Picture</span>
+    </a>
+    <a href="lesson-3.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Next Lesson</span>
+      <span class="lesson-nav__title">The Data Layer</span>
+    </a>
+  </div>
+
+  <!-- MARK COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button id="markCompleteBtn" class="btn btn--primary btn--lg" onclick="markLessonComplete(2)">
+      Mark Lesson Complete
+    </button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>TAM Gathering Architecture Guide &copy; 2024. Made with clarity and intention.</p>
+  <p><a href="index.html">Back to all lessons</a></p>
+</footer>
+
+<!-- COMPLETION TRACKING SCRIPT -->
+<script>
+function markLessonComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('markCompleteBtn').textContent = '✓ Completed';
+  document.getElementById('markCompleteBtn').disabled = true;
+}
+
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(2)) {
+    document.getElementById('markCompleteBtn').textContent = '✓ Completed';
+    document.getElementById('markCompleteBtn').disabled = true;
+  }
+});
+</script>
+
+</body>
+</html>

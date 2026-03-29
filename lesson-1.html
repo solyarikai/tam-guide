@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The Big Picture — TAM Gathering Architecture Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index.html">All Lessons</a>
+    <a href="lesson-1.html" class="active">Lesson 1</a>
+    <a href="lesson-2.html">Lesson 2</a>
+    <a href="lesson-3.html">Lesson 3</a>
+    <a href="lesson-4.html">Lesson 4</a>
+    <a href="lesson-5.html">Lesson 5</a>
+    <a href="lesson-6.html">Lesson 6</a>
+    <a href="lesson-7.html">Lesson 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-1.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+    <a href="lesson-1-ru.html" class="lang-switch__btn">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 14.28%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Lesson 1</span>
+    </div>
+    <h1>The Big Picture</h1>
+    <p class="body-lg">Understand the TAM Gathering System's architecture, principles, and how the pipeline orchestrates company discovery, analysis, and qualification in a deterministic, operator-controlled flow.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">What You'll Learn</div>
+    <ul>
+      <li>The three core principles of the TAM Gathering System</li>
+      <li>How the pipeline flows from gathering to pushing leads into SmartLead</li>
+      <li>The 10 phases and 3 critical checkpoints</li>
+      <li>What "new", "duplicate", and "rejected" mean at each phase</li>
+      <li>How operator approval gates prevent accidental spend and ensure data correctness</li>
+      <li>Why the strict phase ordering protects business logic and cost control</li>
+      <li>How session crashes are recovered without data loss</li>
+    </ul>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Scenario</div>
+    <p>You're building a lead-finding system for a B2B SaaS company running multiple targeting campaigns (UAE agencies, EU tech startups, Australian recruiters). You need to gather 5000+ company prospects, verify them against existing campaigns to avoid duplicates, scrape their websites, analyze fit against an ICP, and push the qualified ones into your outreach tool. The whole process must be traceable, auditable, and give the operator control at exactly the right moments — not too early (wasting time), not too late (wasting money). This is the TAM Gathering System.</p>
+  </div>
+
+  <!-- WHAT WE'RE BUILDING SECTION -->
+  <h2>What We're Building</h2>
+  <p>A reusable system that remembers <strong>everything</strong> about TAM gathering:</p>
+  <ul>
+    <li>Which filters were applied in which source (Apollo, Clay, Sales Navigator, etc.)</li>
+    <li>Which companies were found from which filters</li>
+    <li>Website content scraped (multiple pages, versioned with TTL)</li>
+    <li>AI analysis runs (multiple models, multiple prompts, all stored)</li>
+    <li>Blacklist checks against CRM/campaigns</li>
+    <li>Approval gates before credit-spending steps</li>
+  </ul>
+
+  <h3>Three Core Principles</h3>
+  <ol>
+    <li><strong>MCP-ready</strong>: Each source is a pluggable adapter module. Today they're Puppeteer emulators; tomorrow users connect their own Apollo/Clay API keys. The DB layer is the same.</li>
+    <li><strong>Reusable across projects</strong>: EasyStaff Global, OnSocial, Inxy, any future project — same tables, same pipeline.</li>
+    <li><strong>Runs on Hetzner only</strong>: All scripts, scrapers, migrations, DB queries execute on the production server (46.62.210.24). Local machines are for code editing only. Claude Code SSHes to Hetzner for all execution.</li>
+  </ol>
+
+  <!-- PIPELINE FLOW SECTION -->
+  <h2>Pipeline Flow — Strict Linear, No Skipping</h2>
+
+  <p>The system enforces a strict, linear progression with no shortcuts:</p>
+
+  <div class="pipeline-flow">
+    <span class="pipeline-flow__step">GATHER + DEDUP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">BLACKLIST</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP1 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">PRE-FILTER</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">SCRAPE</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">ANALYZE</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP2 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--expensive">VERIFY</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP3 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">GOD_SEQ</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--expensive">PUSH</span>
+  </div>
+
+  <p><strong>CP1</strong> is the real project confirmation. It shows the project's campaigns and contacts so the operator confirms they're in the right project AND the blacklist scope is correct. This cannot be bypassed — it's an approval_gate in the database.</p>
+
+  <h3>Phase State Machine</h3>
+  <p>The system tracks progress through a deterministic state machine stored in <code>gathering_run.current_phase</code>:</p>
+
+  <div class="wiki-state-flow">
+    <span class="wiki-state-flow__state">gathered</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_scope_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">scope_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">filtered</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">scraped</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">analyzed</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_targets_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">targets_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_verify_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">verify_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">verified</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--final">pushed</span>
+  </div>
+
+  <p>At <code>awaiting_*</code> phases, the run is physically stuck. An <code>approval_gate</code> record exists in the DB. The ONLY way forward is <code>POST /approval-gates/{gate_id}/approve</code>. No code path skips this. This survives crashes, session reloads, server restarts — the state is in the database.</p>
+
+  <!-- PHASE DETAILS TABLE -->
+  <h3>Phase Details: All 10 Phases + 3 Checkpoints</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Phase</th>
+          <th>Cost</th>
+          <th>Auto?</th>
+          <th>What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>GATHER</strong></td>
+          <td>varies</td>
+          <td>auto</td>
+          <td>Execute adapter, get raw company list from source</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>DEDUP</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Normalize domains, match to existing DiscoveredCompanies, create source_links. "Already known" = exists in discovered_companies for THIS project from a previous gathering run. NOT yet blacklisted — that's next.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>BLACKLIST</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Project-scoped CRM check + project_blacklist + enterprise_blacklist</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ CHECKPOINT 1</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Project confirmation + blacklist review.</strong> Shows: project name/ID, total contacts, ALL active campaigns (name, platform, leads), per-campaign rejection breakdown, enterprise blacklist, cross-project warnings. Operator confirms: "Yes, this is my project, and the scope is correct." <strong>Code-enforced — cannot be bypassed.</strong> If wrong project → cancel run. If wrong campaign → fix campaign_filters.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>PRE-FILTER</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Deterministic rejection: offline industries (restaurant, hotel, construction), junk domains (.gov, .edu), trash patterns. NO AI. Rejects 40-60%.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>RESOLVE</strong></td>
+          <td>$0-low</td>
+          <td>auto</td>
+          <td>For companies missing domain: LinkedIn URL → domain. Company name → Google lookup. Skip if domain already known.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>SCRAPE</strong></td>
+          <td>$0 (httpx)</td>
+          <td>auto</td>
+          <td>Fetch website content. TTL check — skip if fresh. Multiple pages. <strong>Cheap — no approval needed.</strong></td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>ANALYZE</strong></td>
+          <td>~$0.01-0.05</td>
+          <td>auto</td>
+          <td>AI analysis (GPT-4o-mini). Scores: industry_match, size_match, service_model. <strong>Cheap — no approval needed.</strong></td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ CHECKPOINT 2</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Operator reviews target list.</strong> Must see: every company marked as target, its confidence score, reasoning, segment. Operator can accept, reject individual companies, override verdicts. Only after operator confirms the target list does the pipeline proceed. This is where the operator ensures the AI didn't hallucinate. <strong>No credits are spent until this is approved.</strong></td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>VERIFY</strong></td>
+          <td>$$$</td>
+          <td><strong>BLOCKED</strong></td>
+          <td>FindyMail email verification. <strong>This is the expensive step.</strong> Only runs on operator-approved targets.</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ CHECKPOINT 3</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Operator approves FindyMail spend.</strong> Must see: how many emails to verify, estimated cost, which companies. Operator can remove companies before verification.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><strong>GOD_SEQUENCE</strong></td>
+          <td>~$0.08</td>
+          <td>auto</td>
+          <td>Generate 5-step sequence from 3-level knowledge: universal patterns + business knowledge (same sender_company) + project ICP. Operator reviews draft before push. <code>POST /generate-sequence/</code> → <code>POST /approve/</code></td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><strong>PUSH</strong></td>
+          <td>$0</td>
+          <td><strong>BLOCKED</strong></td>
+          <td><code>POST /generated/{id}/push/</code> creates SmartLead campaign (DRAFT) with GOD_SEQUENCE output. Operator adds leads + activates.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- WHAT "NEW" AND "DUPLICATE" MEAN -->
+  <h3>What "New" and "Duplicate" Mean at Each Phase</h3>
+
+  <p>This is critical. The words change meaning depending on where you are:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>After phase</th>
+          <th>"New" means</th>
+          <th>"Duplicate" means</th>
+          <th>"Rejected" means</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>GATHER+DEDUP</strong></td>
+          <td>Domain not in discovered_companies for THIS project from any previous gathering run</td>
+          <td>Domain already known from a previous gathering run (gets a new source_link, not a new record)</td>
+          <td>Nothing yet — no filtering applied</td>
+        </tr>
+        <tr>
+          <td><strong>BLACKLIST</strong></td>
+          <td>Passed all blacklist checks</td>
+          <td>N/A</td>
+          <td>In THIS project's active campaigns, OR in project blacklist, OR in enterprise blacklist. <strong>NOT in other projects — that's a warning, not rejection.</strong></td>
+        </tr>
+        <tr>
+          <td><strong>PRE-FILTER</strong></td>
+          <td>Passed pattern matching</td>
+          <td>N/A</td>
+          <td>Offline industry, junk domain, trash pattern</td>
+        </tr>
+        <tr>
+          <td><strong>ANALYZE</strong></td>
+          <td>AI says is_target=true</td>
+          <td>N/A</td>
+          <td>AI says not a target for this ICP</td>
+        </tr>
+        <tr>
+          <td><strong>CHECKPOINT 2</strong></td>
+          <td>Operator confirmed as target</td>
+          <td>N/A</td>
+          <td>Operator rejected / overridden</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SCRAPE FAILURES SECTION -->
+  <h2>Scrape Failures Are Reported</h2>
+
+  <p>When analysis runs, companies without scraped text are SKIPPED (not analyzed). The analysis response includes:</p>
+  <ul>
+    <li><code>total_eligible</code>: how many companies could have been analyzed</li>
+    <li><code>skipped_no_scraped_text</code>: how many were skipped because scraping failed</li>
+    <li><code>total_analyzed</code>: how many were actually analyzed</li>
+  </ul>
+
+  <p>Claude Code MUST report this at checkpoint 2: <em>"Analyzed 300 of 500 eligible companies. 200 skipped (scrape failed — no website text)."</em></p>
+
+  <!-- SESSION CRASH RECOVERY -->
+  <h2>Session Crash Recovery</h2>
+
+  <p>All checkpoint state is persisted in the database (<code>gathering_run.current_phase</code> + <code>approval_gates</code> table).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔄 Session Crash Recovery: Step-by-Step</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <p><strong>What happens if Claude Code session crashes at checkpoint 1:</strong></p>
+      <ol>
+        <li>Next session: Claude Code reads CLAUDE.md which says "check for in-progress runs first"</li>
+        <li>Queries: <code>GET /runs?project_id=X</code> → finds run with <code>current_phase=awaiting_scope_ok</code></li>
+        <li>Queries: <code>GET /approval-gates?project_id=X</code> → finds pending gate with <code>gate_type=scope_verification</code></li>
+        <li>Reads <code>gate.scope</code> which contains the FULL blacklist detail (rejected_domains, warning_domains, campaign breakdown)</li>
+        <li>Shows the same checkpoint 1 results to the operator</li>
+        <li>Operator approves → pipeline continues</li>
+      </ol>
+      <p><strong>No data is lost.</strong> The gate's <code>scope</code> JSON stores everything needed to reconstruct the checkpoint display.</p>
+    </div>
+  </details>
+
+  <!-- WHY THIS ORDER IS NON-NEGOTIABLE -->
+  <h2>Why This Order Is Non-Negotiable</h2>
+
+  <ol>
+    <li><strong>BLACKLIST before PRE-FILTER</strong>: Blacklist is project-scoped business logic (campaigns, CRM). Pre-filter is generic pattern matching. Business logic first — if a company is already in your outreach, who cares if it matches an offline pattern.</li>
+
+    <li><strong>CHECKPOINT 1 after BLACKLIST</strong>: The operator MUST verify the system correctly identified their project's campaigns. If campaign_filters are misconfigured, the blacklist is wrong. Better to catch this before wasting time on 10K companies.</li>
+
+    <li><strong>SCRAPE and ANALYZE are auto (no checkpoint)</strong>: httpx scraping is free. GPT-4o-mini analysis costs ~$0.01-0.05 for 500 companies. Not worth interrupting the operator for $0.03.</li>
+
+    <li><strong>CHECKPOINT 2 after ANALYZE</strong>: This is where the operator sees the actual target list. Before this point, everything is disposable. After this point, money gets spent.</li>
+
+    <li><strong>CHECKPOINT 3 before VERIFY</strong>: FindyMail is real money ($0.01/email × 1000 emails = $10). Operator must approve the exact list and cost.</li>
+
+    <li><strong>No Apollo API in default flow</strong>: Default enrichment is Apollo UI emulator (Puppeteer) — scrapes contact data from Apollo's UI for free. Apollo API costs credits. If credits are needed, that's a separate approval gate.</li>
+  </ol>
+
+  <!-- WHAT CLAUDE CODE MUST DO AT EACH CHECKPOINT -->
+  <h2>What Claude Code Must Display at Each Checkpoint</h2>
+
+  <h3>CHECKPOINT 1 (after blacklist)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Technical Details: CP1 Display Template</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Show the operator:
+- "Checked 1,800 companies against [Project Name]'s campaigns"
+- "YOUR PROJECT'S CAMPAIGNS that triggered rejections:"
+  - Campaign: "EasyStaff - Dubai Agencies v3" → 45 domains, 120 contacts
+  - Campaign: "EasyStaff - UAE IT Companies" → 12 domains, 38 contacts
+- "Enterprise blacklist: 28 domains (competitors)"
+- "Project blacklist: 3 domains (manually banned)"
+- "PASSED: 1,712 companies ready for next phase"
+- If cross_project=true: "WARNING: 89 domains also in Inxy project (not rejected)"
+
+Ask: "Project scope looks correct? Proceed with pre-filter?"
+DO NOT proceed until operator says yes.</code></pre>
+    </div>
+  </details>
+
+  <h3>CHECKPOINT 2 (after analyze)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Technical Details: CP2 Display Template</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Show the operator:
+- "Analyzed 542 companies with [prompt name]"
+- "TARGETS: 180 companies (33% target rate, avg confidence 0.72)"
+- Top 10 targets with domain, name, confidence, segment, reasoning
+- "REJECTED: 362 companies (not matching ICP)"
+- Bottom 5 rejections (borderline) with reasoning
+
+Ask: "Review the target list. Remove any false positives, then confirm to proceed to FindyMail verification."
+DO NOT proceed until operator confirms the target list.</code></pre>
+    </div>
+  </details>
+
+  <h3>CHECKPOINT 3 (before FindyMail)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Technical Details: CP3 Display Template</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Show the operator:
+- "Ready to verify emails for 180 target companies"
+- "Estimated FindyMail cost: ~$X.XX (X emails × $0.01)"
+- "Breakdown: 450 contacts found, 380 with emails to verify"
+
+Ask: "Approve FindyMail spend of ~$X.XX?"
+DO NOT call FindyMail until operator says yes.</code></pre>
+    </div>
+  </details>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Key Takeaway</div>
+    <p>The TAM Gathering System is a <strong>deterministic, database-backed pipeline</strong> that enforces approval gates at critical financial and decision points. No shortcuts, no skips, no operator errors — every company's journey is traceable, every phase is reversible through the database state machine, and every dollar spent is explicitly approved in advance.</p>
+  </div>
+
+  <!-- LESSON NAV (prev/next) -->
+  <nav class="lesson-nav">
+    <div></div>
+    <a href="lesson-2.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Next Lesson</span>
+      <span class="lesson-nav__title">Lesson 2: Project Context & Operator Modes</span>
+    </a>
+  </nav>
+
+  <!-- MARK COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px; padding-bottom: 32px;">
+    <button id="completeBtn" class="btn btn--primary btn--lg" onclick="markComplete(1)">Mark Lesson Complete</button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>TAM Gathering Architecture Guide</p>
+  <p style="font-size: 0.75rem; margin-top: 8px;">Internal documentation — Do not distribute</p>
+</footer>
+
+<!-- COMPLETION SCRIPT -->
+<script>
+function markComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('completeBtn').textContent = '✓ Completed';
+  document.getElementById('completeBtn').disabled = true;
+}
+
+// Check if already completed on page load
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(1)) {
+    document.getElementById('completeBtn').textContent = '✓ Completed';
+    document.getElementById('completeBtn').disabled = true;
+  }
+});
+</script>
+
+</body>
+</html>

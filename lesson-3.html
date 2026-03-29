@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: The Data Layer — TAM Gathering Architecture Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index.html">All Lessons</a>
+    <a href="lesson-1.html">Lesson 1</a>
+    <a href="lesson-2.html">Lesson 2</a>
+    <a href="lesson-3.html" class="active">Lesson 3</a>
+    <a href="lesson-4.html">Lesson 4</a>
+    <a href="lesson-5.html">Lesson 5</a>
+    <a href="lesson-6.html">Lesson 6</a>
+    <a href="lesson-7.html">Lesson 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-3.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+    <a href="lesson-3-ru.html" class="lang-switch__btn">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 42%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Lesson 3</span>
+    </div>
+    <h1>The Data Layer</h1>
+    <p class="body-lg">The complete schema for gathering runs, deduplication, website scrapes, AI analysis, and approval gates. This is the largest and most critical lesson for developers writing migrations and service code.</p>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Scenario</div>
+    <p>You're writing an Alembic migration to add the new gathering system to production. You need to understand every field in every table, every index, the foreign keys, and the design rationale behind each choice. You also need to know how tables connect to each other and what data patterns you'll be querying.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">What You'll Learn</div>
+    <ul>
+      <li>Complete schema for gathering_runs (source ID, filters, dedup via hash)</li>
+      <li>Why the DB is source-agnostic and how to add new adapters without migrations</li>
+      <li>company_source_links: Multi-source dedup bridge with UNIQUE constraint</li>
+      <li>company_scrapes: Versioned website content with TTL-based re-scraping</li>
+      <li>gathering_prompts: Reusable AI templates with effectiveness tracking</li>
+      <li>analysis_runs & analysis_results: Comparing different AI models and prompts</li>
+      <li>approval_gates: Operator checkpoints before expensive operations</li>
+      <li>Extensions to existing tables (discovered_companies, search_jobs)</li>
+    </ul>
+  </div>
+
+  <h2>Table 1: gathering_runs — Filter Memory (the core missing piece)</h2>
+
+  <p>Every search execution = one record. This table remembers EXACTLY which filters were applied, their results, and how much they cost. It's the foundation for dedup, re-execution, and operator decision-making.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_runs
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── company_id            FK(companies) NOT NULL        -- tenant scope
+│
+│   ── SOURCE IDENTIFICATION ──
+├── source_type           VARCHAR(100) NOT NULL           -- free string: "apollo.companies.emulator", "clay.people.api", etc.
+│                                                         -- convention: {platform}.{target}.{method}
+│                                                         -- NOT an enum — new sources added without DB changes
+├── source_label          VARCHAR(255)                    -- human-readable: "Apollo People Search (Puppeteer)"
+├── source_subtype        VARCHAR(100)                    -- optional strategy: "strategy_a" | "strategy_b" | "industry_tags"
+│
+│   ── FILTER MEMORY ──
+├── filters               JSONB NOT NULL                 -- source-specific schema (see Filter Schemas)
+├── filter_hash           VARCHAR(64) NOT NULL           -- SHA256 of sorted canonical JSON
+│                                                        -- dedup: same filters = same hash
+│
+│   ── EXECUTION STATE ──
+├── status                VARCHAR(30) DEFAULT 'pending'  -- pending|running|completed|failed|cancelled|paused
+├── started_at            TIMESTAMPTZ
+├── completed_at          TIMESTAMPTZ
+├── duration_seconds      INTEGER                        -- wall clock time
+│
+│   ── RESULTS SUMMARY ──
+├── raw_results_count     INTEGER DEFAULT 0              -- total from source before dedup
+├── new_companies_count   INTEGER DEFAULT 0              -- net new DiscoveredCompany records
+├── duplicate_count       INTEGER DEFAULT 0              -- already known (linked via company_source_links)
+├── rejected_count        INTEGER DEFAULT 0              -- failed blacklist/offline filter
+├── error_count           INTEGER DEFAULT 0
+│
+│   ── COST ──
+├── credits_used          INTEGER DEFAULT 0
+├── total_cost_usd        NUMERIC(10,4) DEFAULT 0
+│
+│   ── CONTEXT ──
+├── segment_id            FK(kb_segments) NULL           -- which target segment this run serves
+├── pipeline_run_id       FK(pipeline_runs) NULL         -- if part of automated pipeline
+├── triggered_by          VARCHAR(100)                   -- operator | scheduler | mcp_agent | claude_code
+├── input_mode            VARCHAR(30) DEFAULT 'structured' -- structured | natural_language | lookalike | expand
+├── input_text            TEXT                           -- original operator input (NL mode)
+├── notes                 TEXT
+├── error_message         TEXT
+│
+│   ── RAW OUTPUT (debug/reprocess) ──
+├── raw_output_ref        TEXT                           -- file path or S3 key for full output
+├── raw_output_sample     JSONB                          -- first 50 results cached in DB
+│
+├── created_at            TIMESTAMPTZ DEFAULT now()
+├── updated_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX ix_gr_project_source     (project_id, source_type, status)
+├── INDEX ix_gr_filter_hash        (project_id, filter_hash)
+├── INDEX ix_gr_pipeline           (pipeline_run_id)
+└── INDEX ix_gr_created            (project_id, created_at DESC)</pre>
+    </div>
+  </details>
+
+  <h3>Key Design Decisions</h3>
+
+  <h4>source_type as Free VARCHAR (not an enum)</h4>
+  <p><strong>Critical design decision:</strong> The DB is <strong>source-agnostic</strong>. It does NOT know about Apollo, Clay, or any specific platform. Adding a new source = new adapter class + register. Zero DB changes.</p>
+
+  <h4>Why not typed models per source in DB?</h4>
+  <ul>
+    <li>Apollo alone has: People UI, Companies UI, People API, Org API — 4 variants</li>
+    <li>Clay has: Companies UI, Companies API, People UI, People API — 4 more</li>
+    <li>Sales Navigator, Google Maps, LinkedIn, Crunchbase, Indeed... — keeps growing</li>
+    <li>Each platform adds new filters regularly — model updates = migrations = downtime</li>
+    <li>Explosion: platforms x targets x methods = too many models to maintain</li>
+  </ul>
+
+  <h4>The Three-Dimension Approach</h4>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>Column</th>
+          <th>Examples</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Platform</strong></td>
+          <td>source_type prefix</td>
+          <td>apollo, clay, sales_navigator, google_maps, crunchbase, csv</td>
+        </tr>
+        <tr>
+          <td><strong>Target</strong></td>
+          <td>source_type middle</td>
+          <td>companies, people, jobs</td>
+        </tr>
+        <tr>
+          <td><strong>Method</strong></td>
+          <td>source_type suffix</td>
+          <td>api, emulator, manual</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>source_type = {platform}.{target}.{method}</strong> — e.g. <code>apollo.companies.emulator</code>, <code>clay.people.api</code></p>
+  <p>But <code>source_type</code> is just a <strong>free VARCHAR</strong> — the system never parses it. The adapter owns the semantics. Tomorrow you add <code>indeed.jobs.api</code> and nothing changes in the DB.</p>
+
+  <h4>filters as Opaque JSONB</h4>
+  <p>The DB stores whatever the adapter puts in. It never queries individual filter fields. It uses filters for:</p>
+  <ol>
+    <li><strong>Store</strong> — write once when gathering run starts</li>
+    <li><strong>Display</strong> — read and show to operator in UI</li>
+    <li><strong>Hash</strong> — SHA256 for dedup detection (same filters = same hash)</li>
+    <li><strong>Re-execute</strong> — pass back to adapter unchanged</li>
+  </ol>
+
+  <p><strong>No Pydantic validation at DB level.</strong> Validation is the adapter's job. Each adapter defines its OWN Pydantic model with <code>extra='allow'</code> — unknown fields are preserved. When Apollo adds a new filter, it passes through without code changes.</p>
+
+  <h4>filter_hash for Dedup</h4>
+  <p><code>filter_hash = SHA256(sorted canonical JSON of filters)</code></p>
+  <p>Same filters = same hash. Use this to detect and prevent duplicate runs. Query: <code>WHERE project_id = X AND filter_hash = :hash</code> → find if this exact filter set was already run.</p>
+
+  <h2>Table 2: company_source_links — Multi-Source Dedup Bridge</h2>
+
+  <p>Solves: "Acme.com was found by Apollo keyword search, Apollo seniority search, AND Clay TAM export." This table tracks every source that found a company, preserving what each source said about it.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>company_source_links
+├── id                      SERIAL PK
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── gathering_run_id        FK(gathering_runs, CASCADE) NOT NULL
+├── source_rank             INTEGER                     -- position in source results (1st, 50th, etc.)
+├── source_data             JSONB                       -- raw record from this source for this company
+├── source_confidence       FLOAT                       -- relevance score from source
+├── found_at                TIMESTAMPTZ DEFAULT now()
+│
+├── UNIQUE (discovered_company_id, gathering_run_id)
+├── INDEX (gathering_run_id)
+└── INDEX (discovered_company_id)</pre>
+    </div>
+  </details>
+
+  <h3>How Dedup Works (4-Step Flow)</h3>
+
+  <ol>
+    <li><strong>GatheringRun #1 finds domain `acme.com`</strong> → creates DiscoveredCompany + company_source_link(run=1, rank=5)</li>
+    <li><strong>GatheringRun #2 finds `acme.com` again</strong> → finds existing DC by domain → only creates new link(run=2, rank=2)</li>
+    <li><strong>Query multi-source count:</strong> <code>SELECT COUNT(DISTINCT gathering_run_id) FROM company_source_links WHERE discovered_company_id = X</code> = "found by 2 sources"</li>
+    <li><strong>source_data preserves differences</strong> — Apollo said 500 employees, Clay said 450. Both opinions stored in source_data JSONB for each link.</li>
+  </ol>
+
+  <h2>Table 3: company_scrapes — Versioned Website Content with TTL</h2>
+
+  <p>Multiple pages per company. Versioned. TTL-based re-scraping. Tracks scrape method (httpx, crona, puppeteer) and status (success, timeout, blocked, js_only).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>company_scrapes
+├── id                      SERIAL PK
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── url                     TEXT NOT NULL                -- https://acme.com/about
+├── page_path               VARCHAR(255) DEFAULT '/'    -- /, /about, /contact, /team, /careers
+├── raw_html                TEXT                         -- raw HTML (100KB max)
+├── clean_text              TEXT                         -- extracted readable text
+├── metadata                JSONB                        -- {title, description, language, cyrillic_ratio, word_count, og_tags}
+├── scraped_at              TIMESTAMPTZ DEFAULT now()
+├── ttl_days                INTEGER DEFAULT 180          -- 6 months default
+├── expires_at              TIMESTAMPTZ                  -- computed: scraped_at + interval(ttl_days)
+├── is_current              BOOLEAN DEFAULT true         -- latest version for this (company, page_path)
+├── version                 INTEGER DEFAULT 1            -- incremented on re-scrape
+├── scrape_method           VARCHAR(50) DEFAULT 'httpx'  -- httpx | crona | puppeteer | apify
+├── scrape_status           VARCHAR(30) DEFAULT 'success' -- success | error | timeout | blocked | redirect | empty | js_only
+├── error_message           TEXT
+├── http_status_code        INTEGER
+├── html_size_bytes         INTEGER
+├── text_size_bytes         INTEGER
+├── created_at              TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (discovered_company_id, page_path, is_current)
+├── INDEX (discovered_company_id) WHERE is_current = true
+├── INDEX (expires_at) WHERE is_current = true           -- re-scrape scheduler
+└── INDEX (scrape_status)</pre>
+    </div>
+  </details>
+
+  <h3>TTL Re-Scrape Flow</h3>
+
+  <p>Scheduled job queries <code>WHERE is_current = true AND expires_at < now()</code>. When re-scraped:</p>
+  <ol>
+    <li>Old record: <code>is_current = false</code></li>
+    <li>New record: <code>is_current = true, version = old.version + 1</code></li>
+    <li>All historical scrapes preserved — can compare website changes over time</li>
+  </ol>
+
+  <h3>Backward Compatibility</h3>
+
+  <p>New code writes to <code>company_scrapes</code>. Also copies latest homepage (<code>page_path='/'</code>) to <code>discovered_companies.scraped_html/scraped_text/scraped_at</code> for existing code paths that haven't been updated yet.</p>
+
+  <h2>Table 4a: gathering_prompts — Reusable AI Prompt Templates</h2>
+
+  <p>Same prompt gets reused across many analysis runs. Deduped by SHA256 hash. Tracks per-prompt effectiveness (target rate, confidence, usage count).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_prompts
+├── id                    SERIAL PK
+├── company_id            FK(companies) NOT NULL
+├── project_id            FK(projects) NULL              -- NULL = global/shared prompt
+├── name                  VARCHAR(255) NOT NULL           -- "EasyStaff UAE Agency ICP v2"
+├── prompt_text           TEXT NOT NULL
+├── prompt_hash           VARCHAR(64) NOT NULL UNIQUE     -- SHA256, same text = same prompt
+├── category              VARCHAR(50) DEFAULT 'icp_analysis'  -- icp_analysis | segment_classification | pre_filter | enrichment
+├── model_default         VARCHAR(100) DEFAULT 'gpt-4o-mini'
+├── version               INTEGER DEFAULT 1
+├── parent_prompt_id      FK(gathering_prompts) NULL      -- version chain for iterations
+│
+│   ── EFFECTIVENESS TRACKING (updated after each analysis run) ──
+├── usage_count           INTEGER DEFAULT 0
+├── avg_target_rate       FLOAT                           -- targets / total analyzed
+├── avg_confidence        FLOAT
+├── total_companies_analyzed  INTEGER DEFAULT 0
+│
+├── created_by            VARCHAR(100)
+├── is_active             BOOLEAN DEFAULT true
+├── created_at            TIMESTAMPTZ DEFAULT now()
+├── updated_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (company_id, project_id)
+└── INDEX (company_id, category)</pre>
+    </div>
+  </details>
+
+  <h3>Prompt Lifecycle (4 Steps)</h3>
+
+  <ol>
+    <li>Operator writes prompt → <code>get_or_create_prompt()</code> creates record (or finds existing by hash)</li>
+    <li>Analysis run links to prompt via <code>prompt_id</code> FK</li>
+    <li>After run completes → <code>update_prompt_stats()</code> recalculates effectiveness</li>
+    <li>Dashboard: "Which prompt has the best target rate?" → sort by <code>avg_target_rate</code></li>
+  </ol>
+
+  <h3>Version Iteration</h3>
+
+  <p>When improving a prompt, set <code>parent_prompt_id</code> to the old version. Both remain usable; the system tracks which version performs better. Query: <code>SELECT * FROM gathering_prompts WHERE parent_prompt_id = X ORDER BY avg_target_rate DESC</code> to compare all versions of a prompt.</p>
+
+  <h2>Tables 4b: analysis_runs & analysis_results — AI Analysis Versioning</h2>
+
+  <p>Multiple analysis passes with different models/prompts. Compare results. Store everything. Design supports A/B testing and prompt iterations.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree: analysis_runs
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>analysis_runs
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── company_id            FK(companies) NOT NULL
+├── prompt_id             FK(gathering_prompts) NULL      -- links to reusable prompt
+├── model                 VARCHAR(100) NOT NULL           -- gemini-2.5-pro | gpt-4o-mini | gpt-4o | claude-sonnet-4
+├── prompt_hash           VARCHAR(64) NOT NULL            -- SHA256 of prompt text
+├── prompt_text           TEXT NULL                       -- inline fallback if no prompt_id
+├── scope_type            VARCHAR(50) DEFAULT 'batch'   -- batch | single | re_analysis | comparison
+├── scope_filter          JSONB                         -- {gathering_run_id: 5} or {status: "new"} or {company_ids: [1,2,3]}
+├── status                VARCHAR(30) DEFAULT 'pending' -- pending | running | completed | failed | cancelled
+├── started_at            TIMESTAMPTZ
+├── completed_at          TIMESTAMPTZ
+├── total_analyzed        INTEGER DEFAULT 0
+├── targets_found         INTEGER DEFAULT 0
+├── rejected_count        INTEGER DEFAULT 0
+├── avg_confidence        FLOAT
+├── total_cost_usd        NUMERIC(10,4) DEFAULT 0
+├── total_tokens          INTEGER DEFAULT 0
+├── triggered_by          VARCHAR(100)
+├── error_message         TEXT
+├── created_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (project_id, status)
+├── INDEX (project_id, model)
+└── INDEX (project_id, prompt_hash)</pre>
+    </div>
+  </details>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree: analysis_results
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>analysis_results
+├── id                      SERIAL PK
+├── analysis_run_id         FK(analysis_runs, CASCADE) NOT NULL
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── is_target               BOOLEAN DEFAULT false
+├── confidence              FLOAT                       -- 0.0-1.0
+├── segment                 VARCHAR(100)                -- matched segment name
+├── reasoning               TEXT                        -- AI's explanation
+├── scores                  JSONB                       -- {industry: 0.9, size: 0.7, service: 0.6, digital: 0.8}
+├── raw_output              TEXT                        -- full AI response (for debugging)
+├── override_verdict        BOOLEAN                     -- operator manual override
+├── override_reason         TEXT
+├── overridden_at           TIMESTAMPTZ
+├── tokens_used             INTEGER
+├── cost_usd                NUMERIC(10,6)
+├── created_at              TIMESTAMPTZ DEFAULT now()
+│
+├── UNIQUE (analysis_run_id, discovered_company_id)
+├── INDEX (discovered_company_id)
+└── INDEX (analysis_run_id, is_target)</pre>
+    </div>
+  </details>
+
+  <h3>Comparing Two Analysis Runs (SQL Query)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Show SQL Query
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT dc.domain, dc.name,
+  a1.is_target AS run1, a1.confidence AS conf1, a1.reasoning AS why1,
+  a2.is_target AS run2, a2.confidence AS conf2, a2.reasoning AS why2
+FROM discovered_companies dc
+JOIN analysis_results a1 ON a1.discovered_company_id = dc.id AND a1.analysis_run_id = :run1
+JOIN analysis_results a2 ON a2.discovered_company_id = dc.id AND a2.analysis_run_id = :run2
+WHERE a1.is_target != a2.is_target  -- disagreements only
+ORDER BY ABS(a1.confidence - a2.confidence) DESC;</code></pre>
+    </div>
+  </details>
+
+  <p>This query finds where two models disagreed — essential for debugging and selecting the better approach.</p>
+
+  <h2>Table 5: approval_gates — Operator Checkpoints</h2>
+
+  <p>Pipeline pauses before credit-spending steps. Operator reviews scope + estimated cost, then approves/rejects. Prevents accidental expensive runs.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Full Schema Tree
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>approval_gates
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── pipeline_run_id       FK(pipeline_runs) NULL
+├── gathering_run_id      FK(gathering_runs) NULL
+├── gate_type             VARCHAR(50) NOT NULL          -- pre_scrape_crona | pre_analysis | pre_enrichment | pre_verification | pre_push
+├── gate_label            VARCHAR(255) NOT NULL         -- "Approve 150 companies for Apollo enrichment (~$4.50)"
+├── scope                 JSONB NOT NULL                -- {count: 150, company_ids: [...], estimated_cost_usd: 4.50, estimated_credits: 150}
+├── status                VARCHAR(30) DEFAULT 'pending' -- pending | approved | rejected | expired
+├── decided_by            VARCHAR(100)
+├── decided_at            TIMESTAMPTZ
+├── decision_note         TEXT
+├── expires_at            TIMESTAMPTZ                   -- auto-expire if not decided
+├── created_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (project_id, status)
+└── INDEX (status) WHERE status = 'pending'</pre>
+    </div>
+  </details>
+
+  <h3>When Gates Are Created (5 Types)</h3>
+
+  <ul>
+    <li><code>pre_scrape_crona</code>: Crona costs credits — gate before batch scraping via Crona</li>
+    <li><code>pre_analysis</code>: AI analysis costs tokens — gate before GPT/Gemini batch analysis</li>
+    <li><code>pre_enrichment</code>: Apollo enrich costs 1 credit/person — gate before enrich_apollo_batch</li>
+    <li><code>pre_verification</code>: FindyMail costs credits — gate before verify_emails_batch</li>
+    <li><code>pre_push</code>: Final review before SmartLead/GetSales push</li>
+  </ul>
+
+  <h3>httpx Scraping is Free</h3>
+
+  <p>No gate needed. Only credit-spending steps get gates. Free operations (httpx scraping, basic analysis with included models) proceed without checkpoints.</p>
+
+  <h2>Extensions to Existing Tables</h2>
+
+  <h3>discovered_companies — New Columns (9 fields)</h3>
+
+  <p>These columns extend the existing <code>discovered_companies</code> table to support multi-source tracking, CRM integration, and analysis caching:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Show All New Columns
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>-- Multi-source tracking
+source_count             INTEGER DEFAULT 1                  -- how many gathering_runs found this
+first_found_by           INTEGER FK(gathering_runs)         -- first source to discover
+
+-- CRM blacklist cache
+blacklist_checked_at     TIMESTAMPTZ                         -- last time we checked CRM
+in_active_campaign       BOOLEAN DEFAULT false               -- already in outreach
+campaign_ids_active      JSONB                               -- [campaign_id_1, ...]
+crm_contact_id           INTEGER FK(contacts)                -- if already in CRM
+
+-- Latest analysis reference
+latest_analysis_run_id   INTEGER FK(analysis_runs)           -- most recent analysis
+latest_analysis_verdict  BOOLEAN                             -- cached is_target from latest run
+latest_analysis_segment  VARCHAR(100)                        -- cached segment</pre>
+    </div>
+  </details>
+
+  <h3>search_jobs — New Column</h3>
+
+  <p>Links each search job to the gathering run that produced its companies:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Show New Column
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_run_id = Column(Integer, ForeignKey('gathering_runs.id'))</pre>
+    </div>
+  </details>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Key Takeaway</div>
+    <p>The data layer is designed for flexibility, auditability, and dedup. Tables never lock you into specific platforms or sources. Filters stay opaque, hashes prevent duplicates, and versioning (website scrapes, prompts, analysis runs) lets you compare changes over time. Every table includes indexes optimized for the queries you'll actually run. When you write your migrations, include every field, every index, and every constraint — nothing is optional.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <nav class="lesson-nav">
+    <a href="lesson-2.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">← Previous</span>
+      <span class="lesson-nav__title">Lesson 2: Project Context</span>
+    </a>
+    <a href="lesson-4.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Next →</span>
+      <span class="lesson-nav__title">Lesson 4: Pipeline Orchestration</span>
+    </a>
+  </nav>
+
+  <!-- COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--color-neutral-200);">
+    <button id="completeBtn" class="btn btn--primary btn--lg" onclick="markLessonComplete(3)">
+      Mark Lesson 3 Complete
+    </button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>TAM Gathering Architecture Guide — Comprehensive design documentation for developers</p>
+  <p style="margin-top: 8px; font-size: 0.8rem;">Built with care for the team building the next generation of B2B intelligence systems</p>
+</footer>
+
+<script>
+function markLessonComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('completeBtn').textContent = '✓ Completed';
+  document.getElementById('completeBtn').disabled = true;
+}
+
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(3)) {
+    document.getElementById('completeBtn').textContent = '✓ Completed';
+    document.getElementById('completeBtn').disabled = true;
+  }
+  // Update header progress
+  const pct = Math.round((c.length / 7) * 100);
+  const bar = document.querySelector('.header-progress');
+  if (bar) bar.style.width = pct + '%';
+});
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', checkIfCompleted);
+</script>
+
+</body>
+</html>

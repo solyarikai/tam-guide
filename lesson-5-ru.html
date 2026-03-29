@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 5: CRM-блэклист и Approval Gates — Руководство по архитектуре сбора TAM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+  <script>
+    function toggleAccordion(el) {
+      el.open = !el.open;
+    }
+  </script>
+</head>
+<body>
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="site-header">
+  <a href="index-ru.html" class="site-header__logo">
+    <span class="site-header__logo-icon">📊</span>
+    <span>TAM Guide</span>
+  </a>
+  <nav class="site-header__nav">
+    <a href="index-ru.html">Все уроки</a>
+    <a href="lesson-1-ru.html">Урок 1</a>
+    <a href="lesson-2-ru.html">Урок 2</a>
+    <a href="lesson-3-ru.html">Урок 3</a>
+    <a href="lesson-4-ru.html">Урок 4</a>
+    <a href="lesson-5-ru.html" class="active">Урок 5</a>
+    <a href="lesson-6-ru.html">Урок 6</a>
+    <a href="lesson-7-ru.html">Урок 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-5.html" class="lang-switch__btn">EN</a>
+    <a href="lesson-5-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 71%;"></div>
+</header>
+
+<!-- ============================================
+     MAIN CONTENT
+     ============================================ -->
+<main class="main-content guide-content">
+
+  <!-- Lesson Hero -->
+  <section class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Урок 5</span>
+    </div>
+    <h1>CRM-блэклист и Approval Gates</h1>
+    <p class="body-lg" style="margin-top: 12px; color: var(--color-neutral-600);">
+      Узнайте, как система предотвращает дублирование контактов и контролирует расходы перед операциями, требующими кредитов.
+    </p>
+  </section>
+
+  <!-- Scenario -->
+  <section class="scenario">
+    <div class="scenario__label">Сценарий</div>
+    <p>
+      Ваш оператор запускает сбор данных для Project 10 (Inxy, крипто-платежи). Они нашли 134 домена.
+      45 находятся в их собственных кампаниях. Но 89 появляются в активных кампаниях EasyStaff RU (Project 40, зарплатные услуги).
+      Должна ли сбор данных Inxy автоматически отклонить все 89, чтобы избежать "контакта с одними и теми же компаниями"?
+    </p>
+  </section>
+
+  <!-- The Critical Design Decision -->
+  <h2>Критическое решение по дизайну</h2>
+  <p>
+    <strong>Ответ: Нет, абсолютно нет.</strong> Эти 89 доменов находятся в кампаниях EasyStaff, а не Inxy.
+    Они представляют разные ценовые предложения, продаваемые потенциально разным personas покупателей в одной и той же компании.
+  </p>
+
+  <div class="callout callout--warning">
+    <svg class="callout__icon" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+    <p>
+      <strong>Правило межпроектного взаимодействия:</strong> Только кампании одного проекта вызывают автоматическое отклонение.
+      Кампании других проектов показываются как предупреждения. Это сохраняет TAM между проектами
+      и уважает автономность параллельных направлений бизнеса.
+    </p>
+  </div>
+
+  <!-- Blacklist Check Layers -->
+  <h2>Слои проверки блэклиста (по порядку)</h2>
+  <p>
+    Система проверяет домены по четырем слоям в строгой последовательности. Каждый слой имеет разные область действия и действие.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Слой</th>
+          <th>Область действия</th>
+          <th>Действие</th>
+          <th>Что это перехватывает</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Блэклист проекта</strong></td>
+          <td>На проект</td>
+          <td>Автоматическое отклонение</td>
+          <td><code>project_blacklist</code> таблица — ручные блокировки оператором</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Кампании одного проекта</strong></td>
+          <td>На проект</td>
+          <td>Автоматическое отклонение</td>
+          <td>Контакты с доменами в активных кампаниях ЭТОГО проекта</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Глобальный блэклист</strong></td>
+          <td>Глобальный</td>
+          <td>Автоматическое отклонение</td>
+          <td><code>enterprise_blacklist.json</code> — конкуренты, запрещенные организации</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Кампании других проектов</strong></td>
+          <td>Все проекты</td>
+          <td><strong>Только предупреждение</strong></td>
+          <td>Домены в кампаниях ДРУГИХ проектов (информационное)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- What the Operator Sees -->
+  <h2>Что видит оператор</h2>
+  <p>
+    Когда проверка блэклиста завершается, система возвращает два массива: отклоненные домены (с причинами)
+    и домены-предупреждения (только информационно). Вот точная структура JSON:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Пример: JSON rejected_domains + warning_domains</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <p><strong>Ответ отклоненных доменов:</strong></p>
+      <pre>{
+  "rejected_domains": [
+    {
+      "domain": "acme.com",
+      "company_name": "Acme Corp",
+      "reason": "same_project_campaign",
+      "detail": "3 contacts in 2 campaigns",
+      "campaigns": [
+        "EasyStaff - Dubai Agencies v3",
+        "EasyStaff - UAE IT Companies"
+      ],
+      "contact_count": 3
+    },
+    {
+      "domain": "banned-competitor.com",
+      "company_name": "Banned Competitor Inc",
+      "reason": "enterprise_blacklist",
+      "detail": "Listed in global blocklist",
+      "campaigns": null,
+      "contact_count": null
+    }
+  ],
+  "warning_domains": [
+    {
+      "domain": "bigcorp.com",
+      "company_name": "BigCorp",
+      "other_project_name": "Inxy",
+      "other_project_id": 10,
+      "other_contact_count": 5,
+      "other_campaigns": ["Inxy - Crypto Companies Q1"]
+    }
+  ]
+}</pre>
+      <p style="margin-top: 16px;">
+        <strong>Почему это важно:</strong> Если система назначила кампанию неправильному проекту
+        (например, кампания EasyStaff ошибочно помечена как Project 10), оператор может увидеть это в
+        подробной разбивке и исправить отображение кампания → проект.
+      </p>
+    </div>
+  </details>
+
+  <!-- Edge Cases -->
+  <h2>Граничные случаи</h2>
+  <p>
+    Эти шесть сценариев показывают, как система ведет себя в сложных ситуациях:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Сценарий</th>
+          <th>Поведение</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Домен в кампаниях проекта A, сбор для проекта B</td>
+          <td><strong>Предупреждение</strong> (не отклонено) — разное ценовое предложение</td>
+        </tr>
+        <tr>
+          <td>Домен в кампаниях проекта A, сбор для проекта A</td>
+          <td><strong>Отклонено</strong> — уже находится в рассылке</td>
+        </tr>
+        <tr>
+          <td>Домен в глобальном блэклисте</td>
+          <td><strong>Отклонено</strong> независимо от проекта</td>
+        </tr>
+        <tr>
+          <td>Домен в блэклисте проекта A, сбор для проекта B</td>
+          <td><strong>Не отклонено</strong> — блэклист привязан к проекту</td>
+        </tr>
+        <tr>
+          <td>Кампания неправильно назначена проекту</td>
+          <td>Оператор видит названия кампаний в деталях → может исправить отображение</td>
+        </tr>
+        <tr>
+          <td>Контакт имеет NULL project_id</td>
+          <td>Игнорируется — неназначенные контакты не вызывают блэклист</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Materialized View -->
+  <h2>Материализованное представление: быстрый поиск доменов</h2>
+  <p>
+    Система поддерживает материализованное представление, привязанное к проекту, всех активных доменов кампаний.
+    Это позволяет выполнять проверки со скоростью менее миллисекунды во время сбора данных:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>CREATE MATERIALIZED VIEW active_campaign_domains (SQL)</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>CREATE MATERIALIZED VIEW active_campaign_domains AS
+SELECT DISTINCT
+  lower(c.domain) AS domain,
+  c.project_id,
+  p.name AS project_name,
+  array_agg(DISTINCT camp.id) AS campaign_ids,
+  array_agg(DISTINCT camp.name) AS campaign_names,
+  count(DISTINCT c.id) AS contact_count
+FROM contacts c
+JOIN projects p ON p.id = c.project_id
+JOIN campaigns camp ON camp.project_id = c.project_id
+  AND camp.status = 'active'
+WHERE c.domain IS NOT NULL AND c.domain != ''
+GROUP BY lower(c.domain), c.project_id, p.name;
+
+CREATE UNIQUE INDEX ON active_campaign_domains(domain, project_id);
+CREATE INDEX ON active_campaign_domains(project_id);</pre>
+
+      <p style="margin-top: 16px;"><strong>Паттерны запросов:</strong></p>
+      <ul>
+        <li><strong>Проверка одного проекта:</strong> <code>WHERE domain = ANY(:domains) AND project_id = :pid</code></li>
+        <li><strong>Проверка между проектами:</strong> <code>WHERE domain = ANY(:domains) AND project_id != :pid</code></li>
+      </ul>
+
+      <p style="margin-top: 16px;">
+        <strong>Стратегия обновления:</strong>
+        <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> после синхронизации кампании в
+        <code>crm_scheduler.py</code> и после любого push кампании. Блокировки не требуются.
+      </p>
+    </div>
+  </details>
+
+  <!-- DiscoveredCompanies Check -->
+  <h2>Также проверка: ранее обнаруженные компании</h2>
+  <p>
+    Система также предотвращает переобработку компаний из более ранних запусков сбора данных в одном проекте:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>SELECT запрос для discovered_companies (SQL)</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>-- Компании уже в системе для ЭТОГО проекта (не глобально)
+SELECT DISTINCT domain FROM discovered_companies
+WHERE domain = ANY(:domains) AND project_id = :pid
+  AND status != 'REJECTED'</pre>
+
+      <p style="margin-top: 16px;">
+        Это предотвращает переобработку компаний из предыдущих запусков сбора данных в одном проекте,
+        экономя время и избегая дублирования анализа.
+      </p>
+    </div>
+  </details>
+
+  <hr>
+
+  <!-- Approval Gates Section -->
+  <h2>Approval Gates: контрольные точки оператора</h2>
+  <p>
+    Конвейер паузируется перед любой операцией, требующей расходования кредитов. Оператор проверяет объем,
+    предполагаемую стоимость и список компаний, затем одобряет или отклоняет gate.
+  </p>
+
+  <!-- Gate Types Table -->
+  <h3>Типы Gates</h3>
+  <p>
+    Пять типов gates защищают различные этапы конвейера:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Тип Gate</th>
+          <th>Когда активируется</th>
+          <th>Стоимость</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>pre_scrape_crona</code></td>
+          <td>Перед пакетным скрейпингом через Crona API</td>
+          <td>Crona кредиты</td>
+        </tr>
+        <tr>
+          <td><code>pre_analysis</code></td>
+          <td>Перед анализом AI (GPT/Gemini batch)</td>
+          <td>LLM токены</td>
+        </tr>
+        <tr>
+          <td><code>pre_enrichment</code></td>
+          <td>Перед пакетным обогащением Apollo</td>
+          <td>1 кредит/человек</td>
+        </tr>
+        <tr>
+          <td><code>pre_verification</code></td>
+          <td>Перед проверкой email FindyMail</td>
+          <td>FindyMail кредиты</td>
+        </tr>
+        <tr>
+          <td><code>pre_push</code></td>
+          <td>Перед push в SmartLead/GetSales</td>
+          <td>Нет (финальная проверка)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout--tip">
+    <svg class="callout__icon" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-4a1 1 0 11-2 0 1 1 0 012 0zM8 7a1 1 0 000 2h6a1 1 0 100-2H8zm0 4a1 1 0 100 2h3a1 1 0 100-2H8z" clip-rule="evenodd"/>
+    </svg>
+    <p>
+      <strong>Бесплатный скрейпинг:</strong> Скрейпинг через httpx бесплатен — gate не требуется.
+      Gates требуются только для шагов, требующих кредитов.
+    </p>
+  </div>
+
+  <!-- Gate Lifecycle -->
+  <h3>Жизненный цикл Gate (8 шагов)</h3>
+  <ol>
+    <li><strong>Конвейер создает gate:</strong> <code>status = 'pending'</code>, <code>created_at = now()</code></li>
+    <li><strong>База данных сохраняет:</strong> Полный объем (ID компаний, предполагаемая стоимость, использование кредитов)</li>
+    <li><strong>Оператор видит alert:</strong> Дашборд показывает pending gates, сгруппированные по проекту и типу</li>
+    <li><strong>Оператор проверяет детали:</strong> Названия компаний, предполагаемые стоимости, обоснование</li>
+    <li><strong>Оператор одобряет или отклоняет:</strong> <code>POST /api/approval-gates/{id}/approve</code> или <code>/reject</code></li>
+    <li><strong>Конвейер возобновляется:</strong> Если одобрено, перейти к protected шагу. Если отклонено, пометить компании как 'not_approved' и остановиться.</li>
+    <li><strong>Автоматическое истечение:</strong> Если не решено в течение 48 часов, gate автоматически истекает (опционально, в зависимости от конфига)</li>
+    <li><strong>Audit trail:</strong> Все решения логируются: <code>decided_by</code>, <code>decided_at</code>, <code>decision_note</code></li>
+  </ol>
+
+  <!-- Crash Safety -->
+  <h3>Безопасность при сбоях: нет потерянной работы</h3>
+  <p>
+    Если система падает после одобрения gate, но до завершения protected операции,
+    конвейер автоматически возобновляется. Сам gate остается неизменяемым — переповторяется только
+    зависимая работа (обогащение, проверка).
+  </p>
+
+  <hr>
+
+  <!-- Full BLACKLIST → pre_enrichment Walkthrough -->
+  <h2>Полный пример: BLACKLIST → pre_enrichment Gate</h2>
+  <p>
+    Вот 10-шаговый поток, показывающий ровно что происходит, когда оператор собирает 200 компаний,
+    система их фильтрует, и создает gate обогащения:
+  </p>
+
+  <ol style="padding-left: 24px; margin: 20px 0;">
+    <li>
+      <strong>Сбор завершен:</strong> 200 уникальных доменов обнаружено
+      (найдено в Apollo People, source_type = "apollo.people.emulator")
+    </li>
+    <li>
+      <strong>Запускается проверка блэклиста:</strong>
+      <ul style="margin-top: 8px;">
+        <li>45 доменов отклонено (кампании одного проекта)</li>
+        <li>12 доменов отклонено (блэклист проекта)</li>
+        <li>8 доменов отклонено (глобальный блэклист)</li>
+        <li>89 доменов возвращено как предупреждения между проектами (не отклонено)</li>
+        <li><strong>Чистое одобрение: 135 доменов</strong></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Скрейпинг происходит:</strong> 135 одобренных доменов скреплены (бесплатно через httpx)
+    </li>
+    <li>
+      <strong>Результат скрейпинга:</strong> 128 сайтов полностью скреплены, 7 недоступны
+    </li>
+    <li>
+      <strong>Запускается pre-filter:</strong> Детерминированные проверки (без AI)
+      <ul style="margin-top: 8px;">
+        <li>Удаляет 8 доменов (офлайн индустрии, припаркованные сайты, спам домены)</li>
+        <li><strong>Чистое после pre-filter: 120 компаний</strong></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Фаза анализа:</strong> 120 компаний отправлено в GPT-4o-mini для классификации
+    </li>
+    <li>
+      <strong>Анализ завершен:</strong> 45 помечено как targets, 75 как non-targets
+    </li>
+    <li>
+      <strong>Создан pre-enrichment gate:</strong>
+      <ul style="margin-top: 8px;">
+        <li>Объем: 45 ID целевых компаний</li>
+        <li>Предполагаемая стоимость: 45 Apollo кредитов (~$0.90)</li>
+        <li>Предполагаемое количество людей на компанию: 2.3 (в среднем)</li>
+        <li>Итого предполагаемое обогащение: ~103 контактных записи</li>
+        <li>Метка: "Одобрить 45 компаний для обогащения Apollo (~$0.90)"</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Оператор одобряет gate:</strong> <code>decision = approved, decided_by = "alice@company.com"</code>
+    </li>
+    <li>
+      <strong>Выполняется обогащение:</strong> Конвейер продолжает, вызывает
+      <code>enrich_apollo_batch(45 companies)</code>. 103 контактные записи создаются в
+      таблице <code>extracted_contacts</code>. Статус переходит на следующий этап.
+    </li>
+  </ol>
+
+  <!-- Key Takeaway -->
+  <section class="takeaway">
+    <div class="takeaway__title">Ключевой вывод</div>
+    <p>
+      <strong>Автономия между проектами + защиты, привязанные к проекту.</strong>
+      Система блэклиста признает, что разные проекты продают разные продукты
+      потенциально разным decision-makers в одной и той же компании. Предупреждения держат
+      операторов в курсе; отклонения предотвращают дублирование контактов. Approval gates гарантируют
+      операторы остаются в контроле расходов.
+    </p>
+  </section>
+
+  <!-- Lesson Navigation -->
+  <nav class="lesson-nav">
+    <a href="lesson-4-ru.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Предыдущий урок</span>
+      <span class="lesson-nav__title">Урок 4: Анализ и проверка</span>
+    </a>
+    <a href="lesson-6-ru.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Следующий урок</span>
+      <span class="lesson-nav__title">Урок 6: Экспорт и интеграция</span>
+    </a>
+  </nav>
+
+  <!-- Complete Button -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button class="btn btn--primary btn--lg" onclick="markLessonComplete(5)">
+      Отметить урок 5 как пройденный
+    </button>
+  </div>
+
+</main>
+
+<!-- ============================================
+     FOOTER
+     ============================================ -->
+<footer class="site-footer">
+  <p>TAM Gathering Guide</p>
+  <p style="margin-top: 8px; font-size: 0.8125rem;">
+    Built with <span style="color: #DC2626;">♦</span> for data-driven TAM discovery
+  </p>
+</footer>
+
+<!-- ============================================
+     JAVASCRIPT
+     ============================================ -->
+<script>
+  function markLessonComplete(n) {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (!c.includes(n)) {
+      c.push(n);
+      localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+    }
+    const btn = document.querySelector('.btn--primary');
+    if (btn) {
+      btn.textContent = '✓ Пройден';
+      btn.disabled = true;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (c.includes(5)) {
+      const btn = document.querySelector('.btn--primary');
+      if (btn) {
+        btn.textContent = '✓ Пройден';
+        btn.disabled = true;
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

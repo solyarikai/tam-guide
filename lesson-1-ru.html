@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 1: Общая картина — Руководство по архитектуре сбора TAM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index-ru.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index-ru.html">Все уроки</a>
+    <a href="lesson-1-ru.html" class="active">Урок 1</a>
+    <a href="lesson-2-ru.html">Урок 2</a>
+    <a href="lesson-3-ru.html">Урок 3</a>
+    <a href="lesson-4-ru.html">Урок 4</a>
+    <a href="lesson-5-ru.html">Урок 5</a>
+    <a href="lesson-6-ru.html">Урок 6</a>
+    <a href="lesson-7-ru.html">Урок 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-1.html" class="lang-switch__btn">EN</a>
+    <a href="lesson-1-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 14.28%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Урок 1</span>
+    </div>
+    <h1>Общая картина</h1>
+    <p class="body-lg">Разберитесь в архитектуре системы сбора TAM, её принципах и в том, как конвейер организует обнаружение компаний, анализ и квалификацию в детерминированном потоке под контролем оператора.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">Чему вы научитесь</div>
+    <ul>
+      <li>Три основных принципа системы сбора TAM</li>
+      <li>Как конвейер движется от сбора к загрузке лидов в SmartLead</li>
+      <li>10 фаз и 3 критических контрольных точки</li>
+      <li>Что означают «новая», «дубликат» и «отклонена» на каждой фазе</li>
+      <li>Как ворота одобрения оператора предотвращают случайные траты и обеспечивают корректность данных</li>
+      <li>Почему строгий порядок фаз защищает бизнес-логику и контроль затрат</li>
+      <li>Как восстанавливаются сбои сеанса без потери данных</li>
+    </ul>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Сценарий</div>
+    <p>Вы создаёте систему поиска лидов для B2B SaaS компании, запускающей несколько кампаний таргетирования (агентства ОАЭ, стартапы tech в ЕС, рекрутеры в Австралии). Вам нужно собрать более 5000 перспектив компаний, проверить их против существующих кампаний чтобы избежать дубликатов, спарсить их веб-сайты, проанализировать соответствие ICP, и загрузить квалифицированные в ваш инструмент аутрича. Весь процесс должен быть прозрачным, проверяемым, и давать оператору контроль в нужные моменты — не слишком рано (потеря времени), не слишком поздно (потеря денег). Это система сбора TAM.</p>
+  </div>
+
+  <!-- WHAT WE'RE BUILDING SECTION -->
+  <h2>Что мы строим</h2>
+  <p>Переиспользуемую систему, которая помнит <strong>всё</strong> о сборе TAM:</p>
+  <ul>
+    <li>Какие фильтры были применены в каком источнике (Apollo, Clay, Sales Navigator и т.д.)</li>
+    <li>Какие компании были найдены из каких фильтров</li>
+    <li>Содержимое сайтов (многие страницы, версионировано с TTL)</li>
+    <li>Запуски AI анализа (несколько моделей, несколько промптов, всё сохранено)</li>
+    <li>Проверки чёрного списка против CRM/кампаний</li>
+    <li>Ворота одобрения перед шагами траты кредитов</li>
+  </ul>
+
+  <h3>Три основных принципа</h3>
+  <ol>
+    <li><strong>MCP-ready</strong>: Каждый источник — модульный адаптер. Сегодня это Puppeteer эмуляторы; завтра пользователи подключат свои ключи API Apollo/Clay. Слой БД одинаков.</li>
+    <li><strong>Переиспользуемо в разных проектах</strong>: EasyStaff Global, OnSocial, Inxy, любой будущий проект — те же таблицы, тот же конвейер.</li>
+    <li><strong>Работает только на Hetzner</strong>: Все скрипты, парсеры, миграции, запросы к БД выполняются на продакшн-сервере (46.62.210.24). Локальные машины только для редактирования кода. Claude Code SSH на Hetzner для любого выполнения.</li>
+  </ol>
+
+  <!-- PIPELINE FLOW SECTION -->
+  <h2>Поток конвейера — строгий линейный, без пропусков</h2>
+
+  <p>Система принудительно обеспечивает строгую линейную последовательность без ярлыков:</p>
+
+  <div class="pipeline-flow">
+    <span class="pipeline-flow__step">GATHER + DEDUP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">BLACKLIST</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP1 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">PRE-FILTER</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">SCRAPE</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">ANALYZE</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP2 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--expensive">VERIFY</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP3 — STOP</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step">GOD_SEQ</span>
+    <span class="pipeline-flow__arrow">→</span>
+    <span class="pipeline-flow__step pipeline-flow__step--expensive">PUSH</span>
+  </div>
+
+  <p><strong>CP1</strong> это реальное подтверждение проекта. Показывает кампании и контакты проекта так чтобы оператор подтвердил что находится в правильном проекте И что область видимости чёрного списка корректна. Это нельзя пропустить — это approval_gate в базе данных.</p>
+
+  <h3>Машина состояний фазы</h3>
+  <p>Система отслеживает прогресс через детерминированную машину состояний сохранённую в <code>gathering_run.current_phase</code>:</p>
+
+  <div class="wiki-state-flow">
+    <span class="wiki-state-flow__state">gathered</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_scope_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">scope_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">filtered</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">scraped</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">analyzed</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_targets_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">targets_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_verify_ok</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">verify_approved</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state">verified</span>
+    <span class="wiki-state-flow__arrow">→</span>
+    <span class="wiki-state-flow__state wiki-state-flow__state--final">pushed</span>
+  </div>
+
+  <p>На фазах <code>awaiting_*</code> запуск физически заблокирован. В БД существует запись <code>approval_gate</code>. ЕДИНСТВЕННЫЙ способ вперёд это <code>POST /approval-gates/{gate_id}/approve</code>. Без кода пути это не пропустишь. Это переживает краши, перезагрузки сеанса, перезагрузки сервера — состояние в базе данных.</p>
+
+  <!-- PHASE DETAILS TABLE -->
+  <h3>Детали фазы: все 10 фаз + 3 контрольные точки</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Фаза</th>
+          <th>Стоимость</th>
+          <th>Авто?</th>
+          <th>Что происходит</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>GATHER</strong></td>
+          <td>varies</td>
+          <td>auto</td>
+          <td>Выполнить адаптер, получить сырой список компаний из источника</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>DEDUP</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Нормализовать домены, сопоставить с существующими DiscoveredCompanies, создать source_links. «Уже известна» = существует в discovered_companies для ЭТОГО проекта из предыдущего запуска сбора. ЕЩЁ не в чёрном списке — это дальше.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>BLACKLIST</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Проверка CRM с областью проекта + project_blacklist + enterprise_blacklist</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ КОНТРОЛЬНАЯ ТОЧКА 1</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Подтверждение проекта + проверка чёрного списка.</strong> Показывает: имя/ID проекта, всего контактов, ВСЕ активные кампании (имя, платформа, лиды), разбор отклонений по кампании, списание предприятия, кросс-проектные предупреждения. Оператор подтверждает: «Да, это мой проект, и область видимости правильная.» <strong>Принудительно в коде — нельзя пропустить.</strong> Если неправильный проект → отменить запуск. Если неправильная кампания → исправить campaign_filters.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>PRE-FILTER</strong></td>
+          <td>$0</td>
+          <td>auto</td>
+          <td>Детерминированное отклонение: офлайн отрасли (ресторан, отель, строительство), мусорные домены (.gov, .edu), вредные паттерны. БЕЗ AI. Отклоняет 40-60%.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>RESOLVE</strong></td>
+          <td>$0-low</td>
+          <td>auto</td>
+          <td>Для компаний без домена: LinkedIn URL → домен. Имя компании → Google поиск. Пропустить если домен уже известен.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>SCRAPE</strong></td>
+          <td>$0 (httpx)</td>
+          <td>auto</td>
+          <td>Получить содержимое сайта. Проверка TTL — пропустить если свежее. Несколько страниц. <strong>Дешевле — одобрение не нужно.</strong></td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>ANALYZE</strong></td>
+          <td>~$0.01-0.05</td>
+          <td>auto</td>
+          <td>AI анализ (GPT-4o-mini). Оценки: industry_match, size_match, service_model. <strong>Дешевле — одобрение не нужно.</strong></td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ КОНТРОЛЬНАЯ ТОЧКА 2</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Оператор проверяет список целей.</strong> Должен видеть: каждую компанию отмеченную как цель, её оценку уверенности, обоснование, сегмент. Оператор может принять, отклонить отдельные компании, переопределить вердикты. Только после подтверждения оператором список целей конвейер продолжает. Здесь оператор убеждается что AI не галлюцинировал. <strong>Кредиты не тратятся пока это не одобрено.</strong></td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>VERIFY</strong></td>
+          <td>$$$</td>
+          <td><strong>BLOCKED</strong></td>
+          <td>Проверка email FindyMail. <strong>Это дорогой шаг.</strong> Запускается только на одобренные операторм целях.</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td><strong>★ КОНТРОЛЬНАЯ ТОЧКА 3</strong></td>
+          <td>—</td>
+          <td><strong>STOP</strong></td>
+          <td><strong>Оператор одобряет траты FindyMail.</strong> Должен видеть: сколько emails проверять, предполагаемую стоимость, какие компании. Оператор может удалить компании перед проверкой.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><strong>GOD_SEQUENCE</strong></td>
+          <td>~$0.08</td>
+          <td>auto</td>
+          <td>Создать 5-шаговую последовательность из 3-уровневого знания: универсальные паттерны + бизнес-знание (same sender_company) + project ICP. Оператор проверяет черновик перед push. <code>POST /generate-sequence/</code> → <code>POST /approve/</code></td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><strong>PUSH</strong></td>
+          <td>$0</td>
+          <td><strong>BLOCKED</strong></td>
+          <td><code>POST /generated/{id}/push/</code> создаёт SmartLead кампанию (DRAFT) с GOD_SEQUENCE выводом. Оператор добавляет лиды + активирует.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- WHAT "NEW" AND "DUPLICATE" MEAN -->
+  <h3>Что означают «новая» и «дубликат» на каждой фазе</h3>
+
+  <p>Это критично. Слова меняют смысл в зависимости от того где вы находитесь:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>После фазы</th>
+          <th>«Новая» означает</th>
+          <th>«Дубликат» означает</th>
+          <th>«Отклонена» означает</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>GATHER+DEDUP</strong></td>
+          <td>Домен не в discovered_companies для ЭТОГО проекта из любого предыдущего запуска сбора</td>
+          <td>Домен уже известен из предыдущего запуска сбора (получает новый source_link, не новую запись)</td>
+          <td>Ничего пока — нет применённых фильтров</td>
+        </tr>
+        <tr>
+          <td><strong>BLACKLIST</strong></td>
+          <td>Прошла все проверки чёрного списка</td>
+          <td>N/A</td>
+          <td>В АКТИВНЫХ кампаниях ЭТОГО проекта, ИЛИ в project blacklist, ИЛИ в enterprise blacklist. <strong>НЕ в других проектах — это предупреждение, не отклонение.</strong></td>
+        </tr>
+        <tr>
+          <td><strong>PRE-FILTER</strong></td>
+          <td>Прошла матчинг паттернов</td>
+          <td>N/A</td>
+          <td>Офлайн отрасль, мусорный домен, вредный паттерн</td>
+        </tr>
+        <tr>
+          <td><strong>ANALYZE</strong></td>
+          <td>AI говорит is_target=true</td>
+          <td>N/A</td>
+          <td>AI говорит не цель для этого ICP</td>
+        </tr>
+        <tr>
+          <td><strong>КОНТРОЛЬНАЯ ТОЧКА 2</strong></td>
+          <td>Оператор подтвердил как цель</td>
+          <td>N/A</td>
+          <td>Оператор отклонил / переопределил</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SCRAPE FAILURES SECTION -->
+  <h2>Ошибки парсинга сайтов сообщаются</h2>
+
+  <p>Когда запускается анализ, компании без спарсенного текста ПРОПУСКАЮТСЯ (не анализируются). Ответ анализа включает:</p>
+  <ul>
+    <li><code>total_eligible</code>: сколько компаний могло быть проанализировано</li>
+    <li><code>skipped_no_scraped_text</code>: сколько пропущено потому что парсинг сайта не удался</li>
+    <li><code>total_analyzed</code>: сколько было фактически проанализировано</li>
+  </ul>
+
+  <p>Claude Code ДОЛЖЕН сообщить это на контрольной точке 2: <em>«Проанализировано 300 из 500 возможных компаний. 200 пропущено (парсинг сайта не удался — нет текста сайта).»</em></p>
+
+  <!-- SESSION CRASH RECOVERY -->
+  <h2>Восстановление после сбоя сеанса</h2>
+
+  <p>Всё состояние контрольной точки сохранено в базе данных (<code>gathering_run.current_phase</code> + таблица <code>approval_gates</code>).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔄 Восстановление после сбоя сеанса: пошагово</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <p><strong>Что происходит если Claude Code сеанс сбойнулся на контрольной точке 1:</strong></p>
+      <ol>
+        <li>Следующий сеанс: Claude Code читает CLAUDE.md который говорит «сначала проверить запущенные»</li>
+        <li>Запрос: <code>GET /runs?project_id=X</code> → находит запуск с <code>current_phase=awaiting_scope_ok</code></li>
+        <li>Запрос: <code>GET /approval-gates?project_id=X</code> → находит ожидающие ворота с <code>gate_type=scope_verification</code></li>
+        <li>Читает <code>gate.scope</code> которое содержит ПОЛНЫЙ детальный чёрный список (rejected_domains, warning_domains, разбор кампании)</li>
+        <li>Показывает те же результаты контрольной точки 1 оператору</li>
+        <li>Оператор одобряет → конвейер продолжает</li>
+      </ol>
+      <p><strong>Никакие данные не потеряны.</strong> JSON ворот сохраняет всё необходимое чтобы переконструировать отображение контрольной точки.</p>
+    </div>
+  </details>
+
+  <!-- WHY THIS ORDER IS NON-NEGOTIABLE -->
+  <h2>Почему этот порядок ненегосцируем</h2>
+
+  <ol>
+    <li><strong>BLACKLIST перед PRE-FILTER</strong>: Чёрный список это проектно-область бизнес-логика (кампании, CRM). Pre-filter это универсальный матчинг паттернов. Сначала бизнес-логика — если компания уже в вашем аутрече, не важно совпадает ли она с офлайн паттерном.</li>
+
+    <li><strong>КОНТРОЛЬНАЯ ТОЧКА 1 после BLACKLIST</strong>: Оператор ДОЛЖЕН убедиться что система корректно определила кампании проекта. Если campaign_filters неправильно сконфигурированы, чёрный список неправильный. Лучше поймать это перед потратой времени на 10K компаний.</li>
+
+    <li><strong>SCRAPE и ANALYZE авто (без контрольной точки)</strong>: httpx парсинг бесплатен. GPT-4o-mini анализ стоит ~$0.01-0.05 для 500 компаний. Не стоит прерывать оператора за $0.03.</li>
+
+    <li><strong>КОНТРОЛЬНАЯ ТОЧКА 2 после ANALYZE</strong>: Здесь оператор видит фактический список целей. До этой точки всё одноразовое. После этой точки деньги тратятся.</li>
+
+    <li><strong>КОНТРОЛЬНАЯ ТОЧКА 3 перед VERIFY</strong>: FindyMail это реальные деньги ($0.01/email × 1000 emails = $10). Оператор должен одобрить точный список и стоимость.</li>
+
+    <li><strong>Нет Apollo API в потоке по умолчанию</strong>: Обогащение по умолчанию это Apollo UI эмулятор (Puppeteer) — парсит данные контактов с Apollo UI бесплатно. Apollo API стоит кредиты. Если нужны кредиты, это отдельные ворота одобрения.</li>
+  </ol>
+
+  <!-- WHAT CLAUDE CODE MUST DO AT EACH CHECKPOINT -->
+  <h2>Что Claude Code ДОЛЖНА показать на каждой контрольной точке</h2>
+
+  <h3>КОНТРОЛЬНАЯ ТОЧКА 1 (после чёрного списка)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Технические детали: шаблон отображения CP1</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Показать оператору:
+- «Проверено 1,800 компаний против кампаний [Project Name]»
+- «КАМПАНИИ ВАШЕГО ПРОЕКТА которые вызвали отклонения:»
+  - Кампания: «EasyStaff - Dubai Agencies v3» → 45 доменов, 120 контактов
+  - Кампания: «EasyStaff - UAE IT Companies» → 12 доменов, 38 контактов
+- «Enterprise blacklist: 28 доменов (конкуренты)»
+- «Project blacklist: 3 домена (вручную забанены)»
+- «ПРОШЛИ: 1,712 компаний готовы к следующей фазе»
+- Если cross_project=true: «ПРЕДУПРЕЖДЕНИЕ: 89 доменов также в проекте Inxy (не отклонены)»
+
+Спросить: «Область видимости проекта выглядит правильно? Продолжить с pre-filter?»
+НЕ продолжать пока оператор не скажет да.</code></pre>
+    </div>
+  </details>
+
+  <h3>КОНТРОЛЬНАЯ ТОЧКА 2 (после анализа)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Технические детали: шаблон отображения CP2</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Показать оператору:
+- «Проанализировано 542 компании с [prompt name]»
+- «ЦЕЛИ: 180 компаний (33% целевой показатель, средняя уверенность 0.72)»
+- Топ 10 целей с доменом, именем, уверенностью, сегментом, обоснованием
+- «ОТКЛОНЕНЫ: 362 компании (не совпадают с ICP)»
+- Нижние 5 отклонений (пограничные) с обоснованием
+
+Спросить: «Проверьте список целей. Удалите любые ложные срабатывания, потом подтвердите продолжить на проверку FindyMail.»
+НЕ продолжать пока оператор не подтвердит список целей.</code></pre>
+    </div>
+  </details>
+
+  <h3>КОНТРОЛЬНАЯ ТОЧКА 3 (перед FindyMail)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>🔧 Технические детали: шаблон отображения CP3</span>
+      <svg class="accordion__trigger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>Показать оператору:
+- «Готово проверить emails для 180 целевых компаний»
+- «Предполагаемая стоимость FindyMail: ~$X.XX (X emails × $0.01)»
+- «Разбор: 450 контактов найдено, 380 с emails для проверки»
+
+Спросить: «Одобрить траты FindyMail ~$X.XX?»
+НЕ вызывать FindyMail пока оператор не скажет да.</code></pre>
+    </div>
+  </details>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Ключевой вывод</div>
+    <p>Система сбора TAM это <strong>детерминированный, поддерживаемый БД конвейер</strong> который принудительно применяет ворота одобрения в критических финансовых и решающих точках. Никаких ярлыков, никаких пропусков, никаких ошибок оператора — путь каждой компании прослеживаемый, каждая фаза обратима через состояние БД машины состояний, и каждый потраченный доллар явно одобрен заранее.</p>
+  </div>
+
+  <!-- LESSON NAV (prev/next) -->
+  <nav class="lesson-nav">
+    <div></div>
+    <a href="lesson-2-ru.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Следующий урок</span>
+      <span class="lesson-nav__title">Урок 2: Контекст проекта и режимы оператора</span>
+    </a>
+  </nav>
+
+  <!-- MARK COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px; padding-bottom: 32px;">
+    <button id="completeBtn" class="btn btn--primary btn--lg" onclick="markComplete(1)">Отметить урок как пройденный</button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>Руководство по архитектуре сбора TAM</p>
+  <p style="font-size: 0.75rem; margin-top: 8px;">Внутренняя документация — не распространять</p>
+</footer>
+
+<!-- COMPLETION SCRIPT -->
+<script>
+function markComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('completeBtn').textContent = '✓ Пройден';
+  document.getElementById('completeBtn').disabled = true;
+}
+
+// Check if already completed on page load
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(1)) {
+    document.getElementById('completeBtn').textContent = '✓ Пройден';
+    document.getElementById('completeBtn').disabled = true;
+  }
+});
+</script>
+
+</body>
+</html>

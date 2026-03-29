@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Edge Cases, Real-World Example & Key Learnings — TAM Gathering Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+  <style>
+    /* Lesson 7 specific styles */
+    .prompt-iteration-box {
+      background: var(--color-neutral-900);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0;
+      color: #E5E7EB;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.8;
+    }
+
+    .prompt-versions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.875rem;
+    }
+
+    .prompt-versions-table th,
+    .prompt-versions-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--color-neutral-200);
+    }
+
+    .prompt-versions-table th {
+      background: var(--color-cream-100);
+      font-weight: 600;
+      color: var(--color-neutral-900);
+    }
+
+    .prompt-versions-table tr:hover td {
+      background: var(--color-neutral-50);
+    }
+
+    .version-tag {
+      display: inline-block;
+      background: var(--color-primary-100);
+      color: var(--color-primary-800);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    /* step-flow replaced by Mermaid diagrams */
+
+    .step-number {
+      display: inline-block;
+      background: var(--color-primary-800);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+      margin-right: 8px;
+    }
+
+    .checkpoint-badge {
+      display: inline-block;
+      background: var(--color-warning-100);
+      color: var(--color-warning-600);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin: 8px 0;
+    }
+
+    .god-sequence-levels {
+      background: var(--color-primary-50);
+      border: 1px solid var(--color-primary-100);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .god-sequence-levels h4 {
+      color: var(--color-primary-800);
+    }
+
+    .god-sequence-levels .level {
+      margin: 16px 0;
+      padding-left: 20px;
+    }
+
+    .god-sequence-levels .level strong {
+      color: var(--color-primary-800);
+    }
+
+    .god-sequence-levels ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .god-sequence-levels li {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+    }
+
+    .keyword-tier {
+      border-left: 3px solid var(--color-primary-800);
+      padding-left: 16px;
+      margin: 12px 0;
+    }
+
+    .keyword-tier strong {
+      color: var(--color-neutral-900);
+    }
+
+    .summary-principles {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .principle {
+      background: white;
+      border: 1px solid var(--color-neutral-200);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+
+    .principle strong {
+      color: var(--color-primary-800);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .principle p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+      margin: 0;
+    }
+
+    .learning-item {
+      background: var(--color-cream-100);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin: 12px 0;
+      border-left: 4px solid var(--color-primary-800);
+    }
+
+    .learning-item strong {
+      color: var(--color-primary-800);
+    }
+
+    .learning-item p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <a href="index.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index.html">All Lessons</a>
+    <a href="lesson-1.html">Lesson 1</a>
+    <a href="lesson-2.html">Lesson 2</a>
+    <a href="lesson-3.html">Lesson 3</a>
+    <a href="lesson-4.html">Lesson 4</a>
+    <a href="lesson-5.html">Lesson 5</a>
+    <a href="lesson-6.html">Lesson 6</a>
+    <a href="lesson-7.html" class="active">Lesson 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-7.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+    <a href="lesson-7-ru.html" class="lang-switch__btn">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 100%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <section class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Lesson 7</span>
+    </div>
+    <h1>Edge Cases, Real-World Example & Key Learnings</h1>
+    <p style="font-size: 1.125rem; color: var(--color-neutral-700); margin-top: 16px;">
+      The final and most detailed lesson: 8 critical edge cases, the full EasyStaff Global story (11 steps, all 8 prompt versions, GOD_SEQUENCE explained), and the 11 principles that make the pipeline god-level.
+    </p>
+  </section>
+
+  <!-- SCENARIO -->
+  <div class="scenario">
+    <div class="scenario__label">Scenario</div>
+    <p>You've learned the architecture. Now your lead wants you to see the real, messy edge cases that emerge in production and walk through the complete EasyStaff Global story: 7,900+ companies, 20+ cities, 8 regional campaigns. You'll also see all the variations that separate best-in-class from mediocre.</p>
+  </div>
+
+  <!-- CRITICAL EDGE CASES -->
+  <h2>The 8 Critical Edge Cases</h2>
+
+  <h3>1. Company Identity Resolution (Multi-Domain)</h3>
+  <p><strong>Problem:</strong> Same company can have multiple domains: <code>acme.com</code>, <code>acme.ae</code>, <code>acme.co.uk</code>. Apollo says "Frizzon Studios", Clay says "Frizzon Productions". Dedup by domain alone misses these.</p>
+  <p><strong>Solution:</strong> Two-layer dedup:</p>
+  <ul>
+    <li><strong>Layer 1 (instant, free):</strong> Exact domain match after normalization (strip www, lowercase)</li>
+    <li><strong>Layer 2 (fuzzy, in PRE-FILTER phase):</strong> Company name similarity (Levenshtein or trigram) + LinkedIn URL match. If two DiscoveredCompanies share a LinkedIn company URL → merge.</li>
+  </ul>
+  <p><strong>Implementation:</strong> <code>discovered_companies.linkedin_company_url</code> as secondary unique identifier. On insert, check both domain AND linkedin URL. If linkedin matches existing with different domain → link as alias, don't create duplicate.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>company_aliases table schema</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>-- Optional: company aliases table for multi-domain entities
+company_aliases
+├── primary_company_id    FK(discovered_companies)
+├── alias_domain          VARCHAR(255)
+├── alias_linkedin_url    TEXT
+├── alias_name            VARCHAR(500)
+├── detected_by           VARCHAR(50)   -- domain_match | linkedin_match | name_fuzzy | manual</code></pre>
+    </div>
+  </details>
+
+  <h3>2. Domain Resolution Phase</h3>
+  <p><strong>Problem:</strong> 8,766 companies from Companies tab have LinkedIn URLs but NO domains. Can't scrape websites or check email enrichment without domains.</p>
+  <p><strong>Solution:</strong> New pipeline phase RESOLVE between PRE-FILTER and SCRAPE:</p>
+  <ol>
+    <li><strong>LinkedIn → domain:</strong> Apollo <code>enrich_organization(linkedin_url)</code> returns <code>primary_domain</code> (1 credit per call, but high value)</li>
+    <li><strong>Company name → domain:</strong> Google search <code>"{company_name}" site:{country_tld}</code> → extract domain from first result</li>
+    <li><strong>Skip if unnecessary:</strong> Only run for companies missing domain after GATHER</li>
+    <li><strong>Budget-gated:</strong> Operator approves batch size before spending Apollo credits</li>
+  </ol>
+
+  <h3>3. Re-Run Lineage</h3>
+  <p><strong>Problem:</strong> Operator wants to re-run search from 2 weeks ago because "Apollo might have new companies now." But <code>filter_hash</code> dedup would reject it as duplicate.</p>
+  <p><strong>Solution:</strong> <code>parent_run_id</code> on <code>gathering_runs</code>:</p>
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>parent_run_id schema & logic</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs.parent_run_id  FK(gathering_runs) NULL  -- "this is a re-run of run #42"</code></pre>
+      <p style="margin-top: 12px;">When <code>parent_run_id</code> is set, filter_hash dedup is bypassed. The system compares results: "Run #42 found 5,602 companies. Re-run #65 found 5,840. Net new: 238."</p>
+    </div>
+  </details>
+
+  <h3>4. Conversion Provenance (Full Funnel Tracking)</h3>
+  <p><strong>Problem:</strong> "Which gathering run actually led to the deal we closed?" Can't answer without tracking the chain: <code>gathering_run → DiscoveredCompany → ExtractedContact → Contact → Campaign → ProcessedReply → Meeting</code>.</p>
+  <p><strong>Solution:</strong> Already partially solved. Add: <code>contacts.gathering_run_id</code> FK for direct lineage.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Full funnel tracking query</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT gr.source_type, gr.filters->>'person_locations' AS location,
+  COUNT(DISTINCT dc.id) AS companies, COUNT(DISTINCT ec.id) AS contacts,
+  COUNT(DISTINCT c.id) AS crm_contacts, COUNT(DISTINCT m.id) AS meetings
+FROM gathering_runs gr
+JOIN company_source_links csl ON csl.gathering_run_id = gr.id
+JOIN discovered_companies dc ON dc.id = csl.discovered_company_id
+LEFT JOIN extracted_contacts ec ON ec.discovered_company_id = dc.id
+LEFT JOIN contacts c ON c.gathering_run_id = gr.id
+LEFT JOIN meetings m ON m.contact_id = c.id
+WHERE gr.project_id = :project_id
+GROUP BY gr.id
+ORDER BY meetings DESC;</code></pre>
+    </div>
+  </details>
+
+  <h3>5. Central Quota Management</h3>
+  <p><strong>Problem:</strong> Two operators run Apollo searches simultaneously → both hit 429 rate limit. Or MCP agent burns through all Clay credits in one run.</p>
+  <p><strong>Solution:</strong> Adapter-level quota tracker (not DB — in-memory with Redis or simple file lock).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>QuotaManager class (Python)</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>class QuotaManager:
+    """Central quota tracker per source platform."""
+
+    async def acquire(self, platform: str, credits: int, timeout: int = 300) -> bool:
+        """Request credits. Blocks until available or timeout."""
+
+    async def release(self, platform: str, credits: int) -> None:
+        """Return unused credits (e.g., search returned fewer results than expected)."""
+
+    async def get_usage(self, platform: str) -> QuotaUsage:
+        """Current usage: {used_today, limit_today, used_this_hour, limit_this_hour}."""</code></pre>
+      <p style="margin-top: 12px;">Each adapter calls <code>quota_manager.acquire()</code> before API calls. The manager respects per-platform limits (Apollo 200/min, Clay 5000 exports/day, etc.).</p>
+    </div>
+  </details>
+
+  <h3>6. Parallel Gathering Strategy</h3>
+  <p><strong>Problem:</strong> For a new project, operator wants to search Apollo People + Apollo Companies + Clay TAM simultaneously, then merge results.</p>
+  <p><strong>Solution:</strong> Multiple <code>gathering_runs</code> sharing the same <code>pipeline_run_id</code>. The pipeline waits for ALL runs with that <code>pipeline_run_id</code> to complete before proceeding to DEDUP.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>start_parallel_gathering Python function</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>async def start_parallel_gathering(
+    project_id: int,
+    searches: list[dict],  # [{source_type, filters}, ...]
+) -> PipelineRun:
+    """Launch multiple gathering runs in parallel, merge on completion."""
+    pipeline_run = PipelineRun(project_id=project_id, status="RUNNING")
+    for search in searches:
+        gathering_run = GatheringRun(
+            pipeline_run_id=pipeline_run.id,
+            source_type=search["source_type"],
+            filters=search["filters"],
+        )
+        # Launch adapter.execute() as background task
+    # Pipeline continues to DEDUP only when all runs are completed</code></pre>
+    </div>
+  </details>
+
+  <h3>7. Effectiveness Learning Loop</h3>
+  <p><strong>Problem:</strong> After 10 gathering runs, the operator wants to know: "Which source type + filter combination yielded the best target rate?"</p>
+  <p><strong>Solution:</strong> Add computed metrics to <code>gathering_runs</code> (populated after ANALYZE phase).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Gathering metrics & dashboard query</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs (additional columns):
+├── target_rate            FLOAT     -- targets_found / new_companies_count
+├── avg_analysis_confidence FLOAT    -- mean confidence of targets from this run
+├── cost_per_target_usd    NUMERIC   -- total_cost_usd / targets_found
+├── enrichment_hit_rate    FLOAT     -- emails_found / targets_enriched</code></pre>
+      <pre style="margin-top: 12px;"><code>SELECT source_type, source_subtype,
+  COUNT(*) AS runs,
+  AVG(target_rate) AS avg_target_rate,
+  AVG(cost_per_target_usd) AS avg_cost_per_target
+FROM gathering_runs
+WHERE project_id = :pid AND status = 'completed' AND target_rate IS NOT NULL
+GROUP BY source_type, source_subtype
+ORDER BY avg_target_rate DESC;</code></pre>
+      <p style="margin-top: 12px;">This feedback loop lets the system (or MCP agent) recommend: "Apollo seniority search has 22% target rate for this project. Clay companies search has 8%. Recommend using Apollo."</p>
+    </div>
+  </details>
+
+  <h3>8. Export Flexibility (Pluggable Outputs)</h3>
+  <p><strong>Problem:</strong> Results need to go to different destinations: Google Sheets (review), CSV (download), SmartLead (campaign), GetSales (LinkedIn), Clay table (further enrichment), webhook (custom integration).</p>
+  <p><strong>Solution:</strong> Output adapters (same pattern as gathering adapters):</p>
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>OutputAdapter pattern & 6 output types</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>class OutputAdapter(ABC):
+    output_type: str  # "google_sheets" | "csv" | "smartlead" | "getsales" | "clay_table" | "webhook"
+
+    async def export(self, companies: list, contacts: list, config: dict) -> ExportResult</code></pre>
+      <p style="margin-top: 12px;"><strong>6 output types:</strong></p>
+      <ul>
+        <li><code>google_sheets</code> — export to Google Sheets for review & manual sorting</li>
+        <li><code>csv</code> — download as CSV for external tools</li>
+        <li><code>smartlead</code> — push campaign directly to SmartLead (leads + sequence)</li>
+        <li><code>getsales</code> — LinkedIn integration for GetSales campaigns</li>
+        <li><code>clay_table</code> — append to Clay table for further enrichment</li>
+        <li><code>webhook</code> — POST to custom webhook for integrations</li>
+      </ul>
+      <p style="margin-top: 12px;">Already partially exists: <code>clay_service.export_to_google_sheets()</code>, <code>pipeline_service.promote_to_crm()</code>, SmartLead push. Just need to formalize as adapters.</p>
+    </div>
+  </details>
+
+  <!-- REAL-WORLD EXAMPLE -->
+  <h2>Real-World Example: EasyStaff Global (Project 9)</h2>
+  <p>This pipeline was used to gather, analyze, and verify <strong>7,900+ target companies</strong> across <strong>20+ cities</strong>. The pipeline produced <strong>8 new SmartLead campaigns</strong> (regional splits: US, UK, Gulf, India, APAC, Australia, LatAm-Africa, plus variants). EasyStaff Global has ~170 campaigns total — most were created before this pipeline existed, via manual processes.</p>
+
+  <h3>Step-by-Step: The Complete 11-Step Pipeline</h3>
+
+  <div class="wiki-timeline">
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">1</span><span class="wiki-timeline__title">GATHER from Apollo</span></div>
+      <div class="wiki-timeline__body">Apply keyword + city + size filters to Apollo Companies UI. ~80 keywords × 20 cities = 50+ gathering runs. Each run's filters <strong>stored</strong> in <code>gathering_runs.filters</code> (JSONB). Tracks which keywords produce the best targets later.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Puppeteer emulator — free</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">2</span><span class="wiki-timeline__title">DEDUP + BLACKLIST</span></div>
+      <div class="wiki-timeline__body">Domain normalization → <code>company_source_links</code> (multi-source bridge). Check against 170 existing EasyStaff campaigns → reject overlaps.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">★ CP1 — operator confirms project scope</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">3</span><span class="wiki-timeline__title">SCRAPE websites</span></div>
+      <div class="wiki-timeline__body">50 concurrent connections, streaming per-company commits. Crash-safe: <code>on_result</code> callback saves each company individually.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">httpx + Apify proxy — free</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">4</span><span class="wiki-timeline__title">PRE-FILTER algorithmically</span></div>
+      <div class="wiki-timeline__body">No AI — deterministic. Remove: website unreachable, offline industries (restaurant, hotel, construction), junk domains (.gov, .edu), empty/parked sites. ~40-60% rejection rate — cheap, fast, no false negatives.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Deterministic — $0</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">5</span><span class="wiki-timeline__title">ANALYZE by GPT-4o-mini</span></div>
+      <div class="wiki-timeline__body">AI classifies each company: is_target? confidence? segment? reasoning? Uses ICP prompt specific to this project.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--cheap">~$0.01-0.05 per batch of 500</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">6</span><span class="wiki-timeline__title">VERIFY by Opus (Claude)</span></div>
+      <div class="wiki-timeline__body">16 parallel Opus agents review ALL GPT targets. Each agent gets ~260 companies, checks GPT's verdict. Identifies false positives: SaaS products, solo consultants, wrong geography, government entities, game studios building own IP.</div>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">7</span><span class="wiki-timeline__title">ADJUST PROMPT</span></div>
+      <div class="wiki-timeline__body">Repeat Steps 5→6 until ≥90% accuracy. This is the critical loop (see all 8 versions below).</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">↺ If &lt; 90% → back to Step 5</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">8</span><span class="wiki-timeline__title">PEOPLE SEARCH</span></div>
+      <div class="wiki-timeline__body">Find up to 3 decision-makers per verified target company. Filters: founder, c_suite, vp, director seniority. Result: ~1.4 contacts per company average.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Apollo People emulator — free</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">9</span><span class="wiki-timeline__title">FINDYMAIL email verification</span></div>
+      <div class="wiki-timeline__body">For contacts where Apollo doesn't provide verified emails. 438 contacts verified in one 88-min batch.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--expensive">$0.01/email</span>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">★ CP3 — operator approves spend</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">10</span><span class="wiki-timeline__title">GOD_SEQUENCE</span></div>
+      <div class="wiki-timeline__body">Generate campaign sequence via Gemini 2.5 Pro. System assembles knowledge from 3 levels into one prompt (see GOD_SEQUENCE 3-level knowledge system below).</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--cheap">~$0.08 per generation</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">11</span><span class="wiki-timeline__title">SMARTLEAD campaign creation + lead upload</span></div>
+      <div class="wiki-timeline__body">Creates SmartLead campaign (DRAFT state). Uploads leads with custom fields: city, segment, sender_name. Adds 12 sender email accounts per campaign. 8 regional campaigns created via this pipeline.</div>
+    </div>
+  </div>
+
+  <h3>Step 7 Deep Dive: The Prompt Iteration Loop (ALL 8 Versions)</h3>
+  <p>This is what separates good gathering from bad. The pipeline is not "run GPT once and push." It's a closed loop where Opus verifies GPT's work, identifies false-positive patterns, and feeds those back into refined prompts. EasyStaff required 8 iterations:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Accuracy</th>
+        <th>Sample Size</th>
+        <th>Key Change / Finding</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="version-tag">V1</span></td>
+        <td><strong>0%</strong></td>
+        <td>—</td>
+        <td>Complex scoring rubric, wrong segments entirely. Complete restart needed.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V2</span></td>
+        <td><strong>76%</strong></td>
+        <td>—</td>
+        <td>Via negativa approach, CAPS_LOCKED segments. Better but still missing edge cases.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V3</span></td>
+        <td><strong>93%</strong></td>
+        <td>Small sample</td>
+        <td>Geography filter, solo consultant exclusion. Getting close but needs full Opus validation.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V4</span></td>
+        <td><strong>83%</strong></td>
+        <td>Full Opus review</td>
+        <td>Strict location, investment exclusion. Over-corrected, rejected some valid targets.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V5</span></td>
+        <td><strong>86%</strong></td>
+        <td>—</td>
+        <td>Entity type patterns, gov exclusion, country name detection. Refinement phase.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V6</span></td>
+        <td><strong>88%</strong></td>
+        <td>—</td>
+        <td>Interior design, company formation, fake site detection. Approaching threshold.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V7</span></td>
+        <td><strong>93.6%</strong></td>
+        <td>645/689 verified</td>
+        <td>Refined SERVICE vs PRODUCT distinction. Opus catches remaining false positives.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V8</span></td>
+        <td><strong>95.1%</strong> ✓</td>
+        <td>2,645/2,782 verified</td>
+        <td>Final SERVICE business focus. Loop exits when ≥90% accuracy confirmed.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p style="margin-top: 24px;"><strong>Loop logic:</strong> Each iteration, Opus finds FP (false positive) patterns → add exclusions to prompt → re-analyze with updated GPT prompt → re-verify with Opus → measure accuracy → if ≥90%, DONE; else iterate.</p>
+
+  <p style="margin-top: 16px;"><strong>What Opus catches that GPT misses:</strong></p>
+  <ul>
+    <li>Game studios building own IP (not doing client work)</li>
+    <li>Management/strategy consulting (uses employees, not freelancers)</li>
+    <li>SaaS products (not service businesses)</li>
+    <li>Solo consultants / fractional CxOs (1-person operations)</li>
+    <li>Wrong geography (Indian "Pvt Ltd" entities, Oman, Lebanon)</li>
+    <li>Government subsidiaries</li>
+    <li>Investment/VC firms</li>
+  </ul>
+
+  <h3>Step 10 Deep Dive: GOD_SEQUENCE — 3-Level Knowledge System</h3>
+  <p>The campaign sequence is not AI magic — it's <strong>knowledge engineering</strong>. Gemini gets fed 3 levels of context:</p>
+
+  <div class="god-sequence-levels">
+    <h4>LEVEL 1: UNIVERSAL</h4>
+    <p style="margin: 8px 0; font-style: italic;">Campaign patterns that apply to ALL projects (no business context):</p>
+    <div class="level">
+      <strong>Subject line:</strong> <code>{{first_name}} – [pain point question]</code>
+      <br>
+      <strong>Timing:</strong> Day 0/3/4/7/7 (Steps 2+4 tied at 31% warm replies each)
+      <br>
+      <strong>Tone:</strong> Casual-professional, no hype words
+      <br>
+      <strong>Body arc:</strong> Hook → Value → Proof → CTA
+      <br>
+      <strong>CTA:</strong> Offer value ("calculate cost benefit?"), don't ask for time
+      <br>
+      <strong>Flow:</strong> Value → Competition → Price → Channel → Empathy
+    </div>
+
+    <h4>LEVEL 2: BUSINESS</h4>
+    <p style="margin: 8px 0; font-style: italic;">Product knowledge shared across projects of the SAME business (grouped by sender_company):</p>
+    <div class="level">
+      <strong>Example:</strong> Project 9 + 40 = both from "easystaff.io"
+      <br>
+      <strong>Includes:</strong>
+      <ul style="margin: 8px 0;">
+        <li>Competitors & competitive positioning</li>
+        <li>Pricing strategy (hourly, fixed, retainer)</li>
+        <li>Displacement stories (who you're replacing)</li>
+        <li>Proof points (case studies, ROI metrics)</li>
+        <li>Outreach/GTM patterns learned from sibling projects</li>
+      </ul>
+    </div>
+
+    <h4>LEVEL 3: PROJECT</h4>
+    <p style="margin: 8px 0; font-style: italic;">Specific context for THIS project only:</p>
+    <div class="level">
+      <strong>Includes:</strong>
+      <ul style="margin: 8px 0;">
+        <li>ICP (Ideal Customer Profile): exact company sizes, industries, geographies</li>
+        <li>Market segment (e.g., "staffing agencies in UK LatAm focus")</li>
+        <li>Language & region (en-US, en-GB, es-ES)</li>
+        <li>Sender identity (name, title, company voice)</li>
+        <li>Existing contacts & relationship map (to avoid duplicates, personalize for accounts)</li>
+      </ul>
+    </div>
+
+    <p style="margin-top: 16px;"><strong>All 3 levels → ~3,000 token prompt → Gemini 2.5 Pro → 5-step sequence</strong></p>
+    <p style="margin-top: 12px;"><strong>API calls:</strong></p>
+    <ul>
+      <li><code>POST /api/campaign-intelligence/generate-sequence/</code> — Generate draft sequence</li>
+      <li><code>POST /api/campaign-intelligence/generated/{id}/approve/</code> — Mark as approved</li>
+      <li><code>POST /api/campaign-intelligence/generated/{id}/push/</code> — Push to SmartLead</li>
+    </ul>
+    <p style="margin-top: 12px;"><strong>Cost:</strong> ~$0.08 per generation</p>
+  </div>
+
+  <h3>Step 11: SmartLead Campaign Creation & Lead Upload</h3>
+  <p>The sequence is now in SmartLead as DRAFT state. Operator then:</p>
+  <ol>
+    <li>Uploads leads with custom fields: <code>city</code>, <code>segment</code>, <code>sender_name</code></li>
+    <li>Adds 12 sender email accounts (typical for EasyStaff campaigns)</li>
+    <li>Personalization variables: <code>{{first_name}}</code>, <code>{{city}}</code>, <code>{{Sender Name}}</code></li>
+    <li>Activates campaign → outreach begins</li>
+  </ol>
+  <p><strong>8 regional campaigns created via this pipeline:</strong></p>
+  <ul>
+    <li>"Petr ES US"</li>
+    <li>"Petr ES UK"</li>
+    <li>"Petr ES Gulf"</li>
+    <li>"Petr ES India"</li>
+    <li>"Petr ES APAC"</li>
+    <li>"Petr ES Australia"</li>
+    <li>"Petr ES LatAm-Africa"</li>
+    <li>Plus variants (regional+language combinations)</li>
+  </ul>
+
+  <!-- KEYWORD EFFECTIVENESS TRACKING -->
+  <h3>Keyword Effectiveness Tracking</h3>
+  <p>Each gathering run stores its filters. After analysis, <code>target_rate</code> is computed per run. This lets us rank keywords by ROI:</p>
+
+  <div class="keyword-tier">
+    <strong>Tier 1 (35-45%) — Best</strong><br>
+    Keywords: staffing agency, design agency, marketing agency<br>
+    These drive the highest value. Prioritize here.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>Tier 2 (26-35%) — Good</strong><br>
+    Keywords: outsourcing company, digital agency, creative agency<br>
+    Solid performance. Worth continuing.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>Tier 3 (14-23%) — Low</strong><br>
+    Keywords: software development, consulting firm, IT services<br>
+    Below ideal but still useful for coverage.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>DO NOT USE (<5%) — Waste</strong><br>
+    Keywords: fintech, saas, blockchain, crypto<br>
+    Stop. These are time wasters for this ICP.
+  </div>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>SQL query for keyword effectiveness</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT source_subtype, AVG(target_rate) AS avg_target_rate, COUNT(*) AS runs
+FROM gathering_runs
+WHERE project_id = 9 AND status = 'completed'
+GROUP BY source_subtype
+ORDER BY avg_target_rate DESC;</code></pre>
+    </div>
+  </details>
+
+  <!-- KEY LEARNINGS -->
+  <h2>Key Learnings</h2>
+
+  <div class="learning-item">
+    <strong>1. Puppeteer > API for gathering</strong>
+    <p>Apollo emulator is free, API costs credits. Used API only for the 10K credits blitz to cover more keywords faster. For most projects, free Puppeteer wins on ROI.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>2. The prompt iteration loop is essential</strong>
+    <p>V1 had 0% accuracy, V8 reached 95.1%. Eight iterations, each driven by Opus false-positive analysis. There is no shortcut. This is the core competitive advantage.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>3. Keyword effectiveness varies 10x</strong>
+    <p>"staffing agency" hits 45% target rate, "fintech" hits less than 5%. Track <code>target_rate</code> per run to avoid wasting time on bad keywords. Data-driven keyword selection cuts costs in half.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>4. Streaming scrape is essential</strong>
+    <p>Old batch scrape lost all progress on crash. New streaming approach commits per-company via <code>on_result</code> callback. 50 concurrent connections, ~344 companies/min. Resilience beats raw speed.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>5. People search fills the gap</strong>
+    <p>Apollo Companies gives domains, but not contacts. A separate People search step finds 1-3 decision-makers per company. FindyMail only needed for emails Apollo can't verify (10-15% of contacts).</p>
+  </div>
+
+  <!-- SUMMARY PRINCIPLES -->
+  <h2>Summary: The 11 Principles That Make This God-Level</h2>
+
+  <div class="summary-principles">
+    <div class="principle">
+      <strong>1. Source-agnostic</strong>
+      <p>DB stores opaque JSONB. New source = new adapter, zero DB schema changes. Add 10 sources without refactoring.</p>
+    </div>
+
+    <div class="principle">
+      <strong>2. Filter memory</strong>
+      <p>Every search remembered with exact parameters. Re-runnable & auditable. "What keywords did we use 3 months ago?"</p>
+    </div>
+
+    <div class="principle">
+      <strong>3. Multi-source dedup</strong>
+      <p>Same company found by 5 sources → 1 DiscoveredCompany + 5 source_links. No duplicates, full lineage.</p>
+    </div>
+
+    <div class="principle">
+      <strong>4. Cheapest first</strong>
+      <p>Free pattern matching → free blacklist → cheap scraping → expensive AI → costly enrichment. Never waste on AI what free pattern-matching can do.</p>
+    </div>
+
+    <div class="principle">
+      <strong>5. Full provenance</strong>
+      <p>gathering_run → DiscoveredCompany → ExtractedContact → CRM Contact → Meeting → Deal. Answer: "Which gathering run led to this deal?"</p>
+    </div>
+
+    <div class="principle">
+      <strong>6. Versioned scraping</strong>
+      <p>Multiple pages per company, TTL-based re-scrape, all versions preserved. Website changed? Check version history.</p>
+    </div>
+
+    <div class="principle">
+      <strong>7. Multi-run analysis</strong>
+      <p>Different models, different prompts, compare results, operator override. Run GPT + Opus in parallel, pick best or merge.</p>
+    </div>
+
+    <div class="principle">
+      <strong>8. Approval gates</strong>
+      <p>Human-in-the-loop before every credit-spending step. No runaway costs. Operator confirms scope at DEDUP, again before FINDYMAIL.</p>
+    </div>
+
+    <div class="principle">
+      <strong>9. MCP-ready</strong>
+      <p>Adapters expose JSON schemas. <code>tam_gather_{source}</code> tools auto-registered. Claude can call: "gather 500 designers from New York."</p>
+    </div>
+
+    <div class="principle">
+      <strong>10. Learning loop</strong>
+      <p>target_rate, cost_per_target tracked per run. System recommends best sources. "Apollo seniority search: 22% target rate. Clay companies: 8%. Recommend Apollo."</p>
+    </div>
+
+    <div class="principle">
+      <strong>11. Project-aware</strong>
+      <p>Reads ICP, products, competitors, case studies, existing contacts. Not a dumb filter machine. Every prompt is shaped by project context.</p>
+    </div>
+  </div>
+
+  <!-- TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">KEY TAKEAWAY</div>
+    <p>Lesson 7 shows you the full picture: the 8 edge cases that trip up naive systems, the real 11-step EasyStaff pipeline (7,900+ companies, 95.1% accuracy after prompt refinement), and the 11 principles underlying god-level engineering. The secret is not complexity — it's ruthless discipline: free before paid, human approval before spend, full provenance for every contact, and a relentless feedback loop (Opus → prompt → re-analyze → re-verify) until accuracy plateaus. You now have both theory and real-world proof that this works.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <nav class="lesson-nav">
+    <a href="lesson-6.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Previous Lesson</span>
+      <span class="lesson-nav__title">Lesson 6: Multi-Model Analysis</span>
+    </a>
+    <a href="index.html" class="lesson-nav__link" style="text-align: center;">
+      <span class="lesson-nav__label">Return to All Lessons</span>
+      <span class="lesson-nav__title">Index</span>
+    </a>
+  </nav>
+
+  <!-- COMPLETION BUTTON -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button class="btn btn--primary btn--lg" id="completeBtn" onclick="completeLesson()">
+      Mark Lesson 7 Complete
+    </button>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <p>TAM Gathering Guide — Lesson 7 of 7 | <a href="index.html">Return to Index</a></p>
+  <p style="margin-top: 12px; font-size: 0.8125rem;">Complete guide to building industrial-strength data gathering pipelines. Learn the architecture, patterns, and lessons from 7,900+ companies processed.</p>
+</footer>
+
+<script>
+  function completeLesson() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (!c.includes(7)) {
+      c.push(7);
+      localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+    }
+    document.getElementById('completeBtn').textContent = '✓ Completed';
+    document.getElementById('completeBtn').disabled = true;
+  }
+
+  window.addEventListener('load', function() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (c.includes(7)) {
+      document.getElementById('completeBtn').textContent = '✓ Completed';
+      document.getElementById('completeBtn').disabled = true;
+    }
+    const pct = Math.round((c.length / 7) * 100);
+    const bar = document.querySelector('.header-progress');
+    if (bar) bar.style.width = pct + '%';
+  });
+</script>
+
+</body>
+</html>

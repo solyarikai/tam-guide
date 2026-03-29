@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 3: Слой данных — Руководство по архитектуре сбора TAM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index-ru.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index-ru.html">Все уроки</a>
+    <a href="lesson-1-ru.html">Урок 1</a>
+    <a href="lesson-2-ru.html">Урок 2</a>
+    <a href="lesson-3-ru.html" class="active">Урок 3</a>
+    <a href="lesson-4-ru.html">Урок 4</a>
+    <a href="lesson-5-ru.html">Урок 5</a>
+    <a href="lesson-6-ru.html">Урок 6</a>
+    <a href="lesson-7-ru.html">Урок 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-3.html" class="lang-switch__btn">EN</a>
+    <a href="lesson-3-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 42%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Урок 3</span>
+    </div>
+    <h1>Слой данных</h1>
+    <p class="body-lg">Полная схема для запусков сбора, дедупликации, веб-скрейпинга, анализа ИИ и врата одобрения. Это самый большой и критически важный урок для разработчиков, пишущих миграции и код сервисов.</p>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Сценарий</div>
+    <p>Вы пишете миграцию Alembic для добавления новой системы сбора в production. Вам нужно понять каждое поле в каждой таблице, каждый индекс, внешние ключи и логику проектирования для каждого выбора. Вам также нужно знать, как таблицы связаны между собой и какие паттерны данных вы будете запрашивать.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">Чему вы научитесь</div>
+    <ul>
+      <li>Полная схема для gathering_runs (ID источника, фильтры, дедупликация через хеш)</li>
+      <li>Почему БД агностична к источникам и как добавлять новые адаптеры без миграций</li>
+      <li>company_source_links: Мост мультиисточниковой дедупликации с UNIQUE ограничением</li>
+      <li>company_scrapes: Версионированный контент сайта с переправой на основе TTL</li>
+      <li>gathering_prompts: Переиспользуемые шаблоны ИИ с отслеживанием эффективности</li>
+      <li>analysis_runs & analysis_results: Сравнение разных моделей ИИ и промптов</li>
+      <li>approval_gates: Контрольные точки оператора перед дорогостоящими операциями</li>
+      <li>Расширения существующих таблиц (discovered_companies, search_jobs)</li>
+    </ul>
+  </div>
+
+  <h2>Таблица 1: gathering_runs — Память фильтров (критически отсутствующая часть)</h2>
+
+  <p>Каждое выполнение поиска = один запись. Эта таблица помнит ТОЧНО какие фильтры были применены, их результаты и сколько они стоили. Это основа для дедупликации, переисполнения и принятия решений оператором.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_runs
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── company_id            FK(companies) NOT NULL        -- область арендатора
+│
+│   ── SOURCE IDENTIFICATION ──
+├── source_type           VARCHAR(100) NOT NULL           -- свободная строка: "apollo.companies.emulator", "clay.people.api", и т.д.
+│                                                         -- соглашение: {platform}.{target}.{method}
+│                                                         -- НЕ enum — новые источники добавляются без изменений БД
+├── source_label          VARCHAR(255)                    -- читаемое человеком: "Apollo People Search (Puppeteer)"
+├── source_subtype        VARCHAR(100)                    -- опциональная стратегия: "strategy_a" | "strategy_b" | "industry_tags"
+│
+│   ── FILTER MEMORY ──
+├── filters               JSONB NOT NULL                 -- источник-специфичная схема (см. Filter Schemas)
+├── filter_hash           VARCHAR(64) NOT NULL           -- SHA256 отсортированного канонического JSON
+│                                                        -- дедуп: одинаковые фильтры = одинаковый хеш
+│
+│   ── EXECUTION STATE ──
+├── status                VARCHAR(30) DEFAULT 'pending'  -- pending|running|completed|failed|cancelled|paused
+├── started_at            TIMESTAMPTZ
+├── completed_at          TIMESTAMPTZ
+├── duration_seconds      INTEGER                        -- настоящее время
+│
+│   ── RESULTS SUMMARY ──
+├── raw_results_count     INTEGER DEFAULT 0              -- всего от источника перед дедупом
+├── new_companies_count   INTEGER DEFAULT 0              -- новые записи DiscoveredCompany
+├── duplicate_count       INTEGER DEFAULT 0              -- уже известные (связанные через company_source_links)
+├── rejected_count        INTEGER DEFAULT 0              -- не прошли фильтр черного списка/offline
+├── error_count           INTEGER DEFAULT 0
+│
+│   ── COST ──
+├── credits_used          INTEGER DEFAULT 0
+├── total_cost_usd        NUMERIC(10,4) DEFAULT 0
+│
+│   ── CONTEXT ──
+├── segment_id            FK(kb_segments) NULL           -- какой целевой сегмент обслуживает этот запуск
+├── pipeline_run_id       FK(pipeline_runs) NULL         -- если часть автоматизированного конвейера
+├── triggered_by          VARCHAR(100)                   -- operator | scheduler | mcp_agent | claude_code
+├── input_mode            VARCHAR(30) DEFAULT 'structured' -- structured | natural_language | lookalike | expand
+├── input_text            TEXT                           -- оригинальный ввод оператора (режим NL)
+├── notes                 TEXT
+├── error_message         TEXT
+│
+│   ── RAW OUTPUT (debug/reprocess) ──
+├── raw_output_ref        TEXT                           -- путь файла или S3 ключ для полного вывода
+├── raw_output_sample     JSONB                          -- первые 50 результатов кэшированы в БД
+│
+├── created_at            TIMESTAMPTZ DEFAULT now()
+├── updated_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX ix_gr_project_source     (project_id, source_type, status)
+├── INDEX ix_gr_filter_hash        (project_id, filter_hash)
+├── INDEX ix_gr_pipeline           (pipeline_run_id)
+└── INDEX ix_gr_created            (project_id, created_at DESC)</pre>
+    </div>
+  </details>
+
+  <h3>Ключевые решения при проектировании</h3>
+
+  <h4>source_type как свободный VARCHAR (не enum)</h4>
+  <p><strong>Критическое решение при проектировании:</strong> БД <strong>агностична к источникам</strong>. Она НЕ знает об Apollo, Clay или любой другой конкретной платформе. Добавление нового источника = новый класс адаптера + регистрация. Нулевые изменения БД.</p>
+
+  <h4>Почему не типизированные модели по источникам в БД?</h4>
+  <ul>
+    <li>Один только Apollo имеет: People UI, Companies UI, People API, Org API — 4 варианта</li>
+    <li>Clay имеет: Companies UI, Companies API, People UI, People API — еще 4</li>
+    <li>Sales Navigator, Google Maps, LinkedIn, Crunchbase, Indeed... — продолжает расти</li>
+    <li>Каждая платформа добавляет новые фильтры регулярно — обновления модели = миграции = простой</li>
+    <li>Взрыв: платформы x цели x методы = слишком много моделей для поддержки</li>
+  </ul>
+
+  <h4>Трехмерный подход</h4>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Измерение</th>
+          <th>Колонка</th>
+          <th>Примеры</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Платформа</strong></td>
+          <td>префикс source_type</td>
+          <td>apollo, clay, sales_navigator, google_maps, crunchbase, csv</td>
+        </tr>
+        <tr>
+          <td><strong>Цель</strong></td>
+          <td>середина source_type</td>
+          <td>companies, people, jobs</td>
+        </tr>
+        <tr>
+          <td><strong>Метод</strong></td>
+          <td>суффикс source_type</td>
+          <td>api, emulator, manual</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>source_type = {platform}.{target}.{method}</strong> — например <code>apollo.companies.emulator</code>, <code>clay.people.api</code></p>
+  <p>Но <code>source_type</code> это просто <strong>свободный VARCHAR</strong> — система никогда его не парсит. Адаптер владеет семантикой. Завтра вы добавляете <code>indeed.jobs.api</code> и ничего не меняется в БД.</p>
+
+  <h4>filters как непрозрачный JSONB</h4>
+  <p>БД хранит все, что адаптер в нее помещает. Она никогда не запрашивает отдельные поля фильтров. Она использует фильтры для:</p>
+  <ol>
+    <li><strong>Сохранение</strong> — запись один раз когда запуск сбора начинается</li>
+    <li><strong>Отображение</strong> — чтение и показ оператору в UI</li>
+    <li><strong>Хеширование</strong> — SHA256 для обнаружения дедупа (одинаковые фильтры = одинаковый хеш)</li>
+    <li><strong>Переисполнение</strong> — передача обратно адаптеру без изменений</li>
+  </ol>
+
+  <p><strong>Нет валидации Pydantic на уровне БД.</strong> Валидация — это работа адаптера. Каждый адаптер определяет СВОЮ модель Pydantic с <code>extra='allow'</code> — неизвестные поля сохраняются. Когда Apollo добавляет новый фильтр, он проходит без изменения кода.</p>
+
+  <h4>filter_hash для дедупа</h4>
+  <p><code>filter_hash = SHA256(отсортированного канонического JSON фильтров)</code></p>
+  <p>Одинаковые фильтры = одинаковый хеш. Используйте это для обнаружения и предотвращения дублирующихся запусков. Запрос: <code>WHERE project_id = X AND filter_hash = :hash</code> → найти если этот точный набор фильтров уже был запущен.</p>
+
+  <h2>Таблица 2: company_source_links — Мост мультиисточниковой дедупликации</h2>
+
+  <p>Решает: "Acme.com был найден поиском ключевых слов Apollo, поиском по старшинству Apollo И экспортом TAM Clay." Эта таблица отслеживает каждый источник, который нашел компанию, сохраняя что каждый источник сказал о ней.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>company_source_links
+├── id                      SERIAL PK
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── gathering_run_id        FK(gathering_runs, CASCADE) NOT NULL
+├── source_rank             INTEGER                     -- позиция в результатах источника (1-я, 50-я, и т.д.)
+├── source_data             JSONB                       -- сырая запись от этого источника для этой компании
+├── source_confidence       FLOAT                       -- оценка релевантности от источника
+├── found_at                TIMESTAMPTZ DEFAULT now()
+│
+├── UNIQUE (discovered_company_id, gathering_run_id)
+├── INDEX (gathering_run_id)
+└── INDEX (discovered_company_id)</pre>
+    </div>
+  </details>
+
+  <h3>Как работает дедупликация (4-шаговый поток)</h3>
+
+  <ol>
+    <li><strong>GatheringRun #1 находит домен `acme.com`</strong> → создает DiscoveredCompany + company_source_link(run=1, rank=5)</li>
+    <li><strong>GatheringRun #2 находит `acme.com` снова</strong> → находит существующую DC по домену → создает только новую ссылку(run=2, rank=2)</li>
+    <li><strong>Запрос мультиисточникового количества:</strong> <code>SELECT COUNT(DISTINCT gathering_run_id) FROM company_source_links WHERE discovered_company_id = X</code> = "найдено 2 источниками"</li>
+    <li><strong>source_data сохраняет различия</strong> — Apollo сказал 500 сотрудников, Clay сказал 450. Обе мнения хранятся в JSONB source_data для каждой ссылки.</li>
+  </ol>
+
+  <h2>Таблица 3: company_scrapes — Версионированный контент сайта с TTL</h2>
+
+  <p>Несколько страниц на компанию. Версионировано. TTL-основанная переправа. Отслеживает метод скрейпинга (httpx, crona, puppeteer) и статус (success, timeout, blocked, js_only).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>company_scrapes
+├── id                      SERIAL PK
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── url                     TEXT NOT NULL                -- https://acme.com/about
+├── page_path               VARCHAR(255) DEFAULT '/'    -- /, /about, /contact, /team, /careers
+├── raw_html                TEXT                         -- сырой HTML (макс 100KB)
+├── clean_text              TEXT                         -- извлеченный читаемый текст
+├── metadata                JSONB                        -- {title, description, language, cyrillic_ratio, word_count, og_tags}
+├── scraped_at              TIMESTAMPTZ DEFAULT now()
+├── ttl_days                INTEGER DEFAULT 180          -- 6 месяцев по умолчанию
+├── expires_at              TIMESTAMPTZ                  -- вычисляется: scraped_at + interval(ttl_days)
+├── is_current              BOOLEAN DEFAULT true         -- последняя версия для этой (company, page_path)
+├── version                 INTEGER DEFAULT 1            -- увеличивается при переправе
+├── scrape_method           VARCHAR(50) DEFAULT 'httpx'  -- httpx | crona | puppeteer | apify
+├── scrape_status           VARCHAR(30) DEFAULT 'success' -- success | error | timeout | blocked | redirect | empty | js_only
+├── error_message           TEXT
+├── http_status_code        INTEGER
+├── html_size_bytes         INTEGER
+├── text_size_bytes         INTEGER
+├── created_at              TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (discovered_company_id, page_path, is_current)
+├── INDEX (discovered_company_id) WHERE is_current = true
+├── INDEX (expires_at) WHERE is_current = true           -- планировщик переправы
+└── INDEX (scrape_status)</pre>
+    </div>
+  </details>
+
+  <h3>TTL поток переправы</h3>
+
+  <p>Запланированная работа запрашивает <code>WHERE is_current = true AND expires_at < now()</code>. При переправе:</p>
+  <ol>
+    <li>Старая запись: <code>is_current = false</code></li>
+    <li>Новая запись: <code>is_current = true, version = old.version + 1</code></li>
+    <li>Все исторические скрейпы сохранены — можно сравнить изменения веб-сайта с течением времени</li>
+  </ol>
+
+  <h3>Обратная совместимость</h3>
+
+  <p>Новый код пишет в <code>company_scrapes</code>. Также копирует последнюю домашнюю страницу (<code>page_path='/'</code>) в <code>discovered_companies.scraped_html/scraped_text/scraped_at</code> для существующих путей кода, которые еще не были обновлены.</p>
+
+  <h2>Таблица 4a: gathering_prompts — Переиспользуемые шаблоны AI промптов</h2>
+
+  <p>Один и тот же промпт переиспользуется в разных запусках анализа. Дедупирован по хешу SHA256. Отслеживает эффективность на промпт (целевой коэффициент, уверенность, количество использований).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_prompts
+├── id                    SERIAL PK
+├── company_id            FK(companies) NOT NULL
+├── project_id            FK(projects) NULL              -- NULL = глобальный/общий промпт
+├── name                  VARCHAR(255) NOT NULL           -- "EasyStaff UAE Agency ICP v2"
+├── prompt_text           TEXT NOT NULL
+├── prompt_hash           VARCHAR(64) NOT NULL UNIQUE     -- SHA256, одинаковый текст = одинаковый промпт
+├── category              VARCHAR(50) DEFAULT 'icp_analysis'  -- icp_analysis | segment_classification | pre_filter | enrichment
+├── model_default         VARCHAR(100) DEFAULT 'gpt-4o-mini'
+├── version               INTEGER DEFAULT 1
+├── parent_prompt_id      FK(gathering_prompts) NULL      -- цепочка версий для итераций
+│
+│   ── TRACKING EFFECTIVENESS (обновляется после каждого запуска анализа) ──
+├── usage_count           INTEGER DEFAULT 0
+├── avg_target_rate       FLOAT                           -- targets / всего проанализировано
+├── avg_confidence        FLOAT
+├── total_companies_analyzed  INTEGER DEFAULT 0
+│
+├── created_by            VARCHAR(100)
+├── is_active             BOOLEAN DEFAULT true
+├── created_at            TIMESTAMPTZ DEFAULT now()
+├── updated_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (company_id, project_id)
+└── INDEX (company_id, category)</pre>
+    </div>
+  </details>
+
+  <h3>Жизненный цикл промпта (4 шага)</h3>
+
+  <ol>
+    <li>Оператор пишет промпт → <code>get_or_create_prompt()</code> создает запись (или находит существующую по хешу)</li>
+    <li>Запуск анализа связывает с промптом через FK <code>prompt_id</code></li>
+    <li>После завершения запуска → <code>update_prompt_stats()</code> пересчитывает эффективность</li>
+    <li>Панель управления: "Какой промпт имеет лучший целевой коэффициент?" → сортировка по <code>avg_target_rate</code></li>
+  </ol>
+
+  <h3>Итерация версии</h3>
+
+  <p>Когда улучшаете промпт, установите <code>parent_prompt_id</code> на старую версию. Обе остаются используемыми; система отслеживает какая версия работает лучше. Запрос: <code>SELECT * FROM gathering_prompts WHERE parent_prompt_id = X ORDER BY avg_target_rate DESC</code> для сравнения всех версий промпта.</p>
+
+  <h2>Таблицы 4b: analysis_runs & analysis_results — Версионирование анализа AI</h2>
+
+  <p>Множество проходов анализа с разными моделями/промптами. Сравнивайте результаты. Сохраняйте все. Проектирование поддерживает A/B тестирование и итерации промптов.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы: analysis_runs
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>analysis_runs
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── company_id            FK(companies) NOT NULL
+├── prompt_id             FK(gathering_prompts) NULL      -- ссылка на переиспользуемый промпт
+├── model                 VARCHAR(100) NOT NULL           -- gemini-2.5-pro | gpt-4o-mini | gpt-4o | claude-sonnet-4
+├── prompt_hash           VARCHAR(64) NOT NULL            -- SHA256 текста промпта
+├── prompt_text           TEXT NULL                       -- встроенный fallback если нет prompt_id
+├── scope_type            VARCHAR(50) DEFAULT 'batch'   -- batch | single | re_analysis | comparison
+├── scope_filter          JSONB                         -- {gathering_run_id: 5} или {status: "new"} или {company_ids: [1,2,3]}
+├── status                VARCHAR(30) DEFAULT 'pending' -- pending | running | completed | failed | cancelled
+├── started_at            TIMESTAMPTZ
+├── completed_at          TIMESTAMPTZ
+├── total_analyzed        INTEGER DEFAULT 0
+├── targets_found         INTEGER DEFAULT 0
+├── rejected_count        INTEGER DEFAULT 0
+├── avg_confidence        FLOAT
+├── total_cost_usd        NUMERIC(10,4) DEFAULT 0
+├── total_tokens          INTEGER DEFAULT 0
+├── triggered_by          VARCHAR(100)
+├── error_message         TEXT
+├── created_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (project_id, status)
+├── INDEX (project_id, model)
+└── INDEX (project_id, prompt_hash)</pre>
+    </div>
+  </details>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы: analysis_results
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>analysis_results
+├── id                      SERIAL PK
+├── analysis_run_id         FK(analysis_runs, CASCADE) NOT NULL
+├── discovered_company_id   FK(discovered_companies, CASCADE) NOT NULL
+├── is_target               BOOLEAN DEFAULT false
+├── confidence              FLOAT                       -- 0.0-1.0
+├── segment                 VARCHAR(100)                -- совпавшее имя сегмента
+├── reasoning               TEXT                        -- объяснение AI
+├── scores                  JSONB                       -- {industry: 0.9, size: 0.7, service: 0.6, digital: 0.8}
+├── raw_output              TEXT                        -- полный ответ AI (для отладки)
+├── override_verdict        BOOLEAN                     -- ручное переопределение оператором
+├── override_reason         TEXT
+├── overridden_at           TIMESTAMPTZ
+├── tokens_used             INTEGER
+├── cost_usd                NUMERIC(10,6)
+├── created_at              TIMESTAMPTZ DEFAULT now()
+│
+├── UNIQUE (analysis_run_id, discovered_company_id)
+├── INDEX (discovered_company_id)
+└── INDEX (analysis_run_id, is_target)</pre>
+    </div>
+  </details>
+
+  <h3>Сравнение двух запусков анализа (SQL запрос)</h3>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Показать SQL запрос
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT dc.domain, dc.name,
+  a1.is_target AS run1, a1.confidence AS conf1, a1.reasoning AS why1,
+  a2.is_target AS run2, a2.confidence AS conf2, a2.reasoning AS why2
+FROM discovered_companies dc
+JOIN analysis_results a1 ON a1.discovered_company_id = dc.id AND a1.analysis_run_id = :run1
+JOIN analysis_results a2 ON a2.discovered_company_id = dc.id AND a2.analysis_run_id = :run2
+WHERE a1.is_target != a2.is_target  -- несогласия только
+ORDER BY ABS(a1.confidence - a2.confidence) DESC;</code></pre>
+    </div>
+  </details>
+
+  <p>Этот запрос находит где два модели не согласились — существенно для отладки и выбора лучшего подхода.</p>
+
+  <h2>Таблица 5: approval_gates — Контрольные точки оператора</h2>
+
+  <p>Конвейер паузирует перед шагами траты кредитов. Оператор просматривает область + предполагаемую стоимость, затем одобряет/отклоняет. Предотвращает случайные дорогостоящие запуски.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Полное дерево схемы
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>approval_gates
+├── id                    SERIAL PK
+├── project_id            FK(projects) NOT NULL
+├── pipeline_run_id       FK(pipeline_runs) NULL
+├── gathering_run_id      FK(gathering_runs) NULL
+├── gate_type             VARCHAR(50) NOT NULL          -- pre_scrape_crona | pre_analysis | pre_enrichment | pre_verification | pre_push
+├── gate_label            VARCHAR(255) NOT NULL         -- "Одобрить 150 компаний для обогащения Apollo (~$4.50)"
+├── scope                 JSONB NOT NULL                -- {count: 150, company_ids: [...], estimated_cost_usd: 4.50, estimated_credits: 150}
+├── status                VARCHAR(30) DEFAULT 'pending' -- pending | approved | rejected | expired
+├── decided_by            VARCHAR(100)
+├── decided_at            TIMESTAMPTZ
+├── decision_note         TEXT
+├── expires_at            TIMESTAMPTZ                   -- автоматически истечет если не решено
+├── created_at            TIMESTAMPTZ DEFAULT now()
+│
+├── INDEX (project_id, status)
+└── INDEX (status) WHERE status = 'pending'</pre>
+    </div>
+  </details>
+
+  <h3>Когда врата создаются (5 типов)</h3>
+
+  <ul>
+    <li><code>pre_scrape_crona</code>: Crona стоит кредитов — врата перед пакетным скрейпингом через Crona</li>
+    <li><code>pre_analysis</code>: AI анализ стоит токены — врата перед пакетным анализом GPT/Gemini</li>
+    <li><code>pre_enrichment</code>: Apollo enrich стоит 1 кредит/персона — врата перед enrich_apollo_batch</li>
+    <li><code>pre_verification</code>: FindyMail стоит кредиты — врата перед verify_emails_batch</li>
+    <li><code>pre_push</code>: Финальный обзор перед пушем SmartLead/GetSales</li>
+  </ul>
+
+  <h3>Скрейпинг httpx бесплатен</h3>
+
+  <p>Врата не требуется. Только шаги траты кредитов получают врата. Свободные операции (скрейпинг httpx, базовый анализ с включенными моделями) проходят без контрольных точек.</p>
+
+  <h2>Расширения существующих таблиц</h2>
+
+  <h3>discovered_companies — Новые колонки (9 полей)</h3>
+
+  <p>Эти колонки расширяют существующую таблицу <code>discovered_companies</code> для поддержки отслеживания мультиисточников, интеграции CRM и кэширования анализа:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Показать все новые колонки
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>-- Отслеживание мультиисточников
+source_count             INTEGER DEFAULT 1                  -- сколько gathering_runs нашли это
+first_found_by           INTEGER FK(gathering_runs)         -- первый источник, обнаруживший это
+
+-- Кэш черного списка CRM
+blacklist_checked_at     TIMESTAMPTZ                         -- последний раз мы проверили CRM
+in_active_campaign       BOOLEAN DEFAULT false               -- уже в outreach
+campaign_ids_active      JSONB                               -- [campaign_id_1, ...]
+crm_contact_id           INTEGER FK(contacts)                -- если уже в CRM
+
+-- Ссылка на последний анализ
+latest_analysis_run_id   INTEGER FK(analysis_runs)           -- самый недавний анализ
+latest_analysis_verdict  BOOLEAN                             -- кэшированный is_target из последнего запуска
+latest_analysis_segment  VARCHAR(100)                        -- кэшированный сегмент</pre>
+    </div>
+  </details>
+
+  <h3>search_jobs — Новая колонка</h3>
+
+  <p>Связывает каждую работу поиска с запуском сбора, который произвел его компании:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Показать новую колонку
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>gathering_run_id = Column(Integer, ForeignKey('gathering_runs.id'))</pre>
+    </div>
+  </details>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Ключевой вывод</div>
+    <p>Слой данных спроектирован для гибкости, аудиторствуемости и дедупа. Таблицы никогда не ограничивают вас определенными платформами или источниками. Фильтры остаются непрозрачными, хеши предотвращают дубликаты, и версионирование (скрейпы сайта, промпты, запуски анализа) позволяет вам сравнивать изменения с течением времени. Каждая таблица включает индексы оптимизированные для запросов, которые вы фактически будете запускать. Когда вы пишете свои миграции, включайте каждое поле, каждый индекс и каждое ограничение — ничто не опционально.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <nav class="lesson-nav">
+    <a href="lesson-2-ru.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">← Предыдущий</span>
+      <span class="lesson-nav__title">Урок 2: Контекст проекта</span>
+    </a>
+    <a href="lesson-4-ru.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Следующий →</span>
+      <span class="lesson-nav__title">Урок 4: Оркестрация конвейера</span>
+    </a>
+  </nav>
+
+  <!-- COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--color-neutral-200);">
+    <button id="completeBtn" class="btn btn--primary btn--lg" onclick="markLessonComplete(3)">
+      Отметить урок как пройденный
+    </button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>Руководство по архитектуре сбора TAM — Комплексная документация проектирования для разработчиков</p>
+  <p style="margin-top: 8px; font-size: 0.8rem;">Построено с заботой для команды, строящей следующее поколение систем B2B интеллекта</p>
+</footer>
+
+<script>
+function markLessonComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('completeBtn').textContent = '✓ Пройден';
+  document.getElementById('completeBtn').disabled = true;
+}
+
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(3)) {
+    document.getElementById('completeBtn').textContent = '✓ Пройден';
+    document.getElementById('completeBtn').disabled = true;
+  }
+  const pct = Math.round((c.length / 7) * 100);
+  const bar = document.querySelector('.header-progress');
+  if (bar) bar.style.width = pct + '%';
+});
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', checkIfCompleted);
+</script>
+
+</body>
+</html>

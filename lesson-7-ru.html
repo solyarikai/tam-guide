@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 7: Граничные случаи, реальный пример и выводы — Руководство по архитектуре сбора TAM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+  <style>
+    /* Lesson 7 specific styles */
+    .prompt-iteration-box {
+      background: var(--color-neutral-900);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0;
+      color: #E5E7EB;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.8;
+    }
+
+    .prompt-versions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.875rem;
+    }
+
+    .prompt-versions-table th,
+    .prompt-versions-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--color-neutral-200);
+    }
+
+    .prompt-versions-table th {
+      background: var(--color-cream-100);
+      font-weight: 600;
+      color: var(--color-neutral-900);
+    }
+
+    .prompt-versions-table tr:hover td {
+      background: var(--color-neutral-50);
+    }
+
+    .version-tag {
+      display: inline-block;
+      background: var(--color-primary-100);
+      color: var(--color-primary-800);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    /* step-flow replaced by Mermaid diagrams */
+
+    .step-number {
+      display: inline-block;
+      background: var(--color-primary-800);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+      margin-right: 8px;
+    }
+
+    .checkpoint-badge {
+      display: inline-block;
+      background: var(--color-warning-100);
+      color: var(--color-warning-600);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin: 8px 0;
+    }
+
+    .god-sequence-levels {
+      background: var(--color-primary-50);
+      border: 1px solid var(--color-primary-100);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .god-sequence-levels h4 {
+      color: var(--color-primary-800);
+    }
+
+    .god-sequence-levels .level {
+      margin: 16px 0;
+      padding-left: 20px;
+    }
+
+    .god-sequence-levels .level strong {
+      color: var(--color-primary-800);
+    }
+
+    .god-sequence-levels ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .god-sequence-levels li {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+    }
+
+    .keyword-tier {
+      border-left: 3px solid var(--color-primary-800);
+      padding-left: 16px;
+      margin: 12px 0;
+    }
+
+    .keyword-tier strong {
+      color: var(--color-neutral-900);
+    }
+
+    .summary-principles {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .principle {
+      background: white;
+      border: 1px solid var(--color-neutral-200);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+
+    .principle strong {
+      color: var(--color-primary-800);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .principle p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+      margin: 0;
+    }
+
+    .learning-item {
+      background: var(--color-cream-100);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin: 12px 0;
+      border-left: 4px solid var(--color-primary-800);
+    }
+
+    .learning-item strong {
+      color: var(--color-primary-800);
+    }
+
+    .learning-item p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-neutral-700);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <a href="index-ru.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index-ru.html">Все уроки</a>
+    <a href="lesson-1-ru.html">Урок 1</a>
+    <a href="lesson-2-ru.html">Урок 2</a>
+    <a href="lesson-3-ru.html">Урок 3</a>
+    <a href="lesson-4-ru.html">Урок 4</a>
+    <a href="lesson-5-ru.html">Урок 5</a>
+    <a href="lesson-6-ru.html">Урок 6</a>
+    <a href="lesson-7-ru.html" class="active">Урок 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-7.html" class="lang-switch__btn">EN</a>
+    <a href="lesson-7-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 100%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <section class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Урок 7</span>
+    </div>
+    <h1>Граничные случаи, реальный пример и выводы</h1>
+    <p style="font-size: 1.125rem; color: var(--color-neutral-700); margin-top: 16px;">
+      Финальный и наиболее детальный урок: 8 критических граничных случаев, полная история EasyStaff Global (11 шагов, все 8 версий промптов, объяснение GOD_SEQUENCE) и 11 принципов, которые делают конвейер god-level.
+    </p>
+  </section>
+
+  <!-- SCENARIO -->
+  <div class="scenario">
+    <div class="scenario__label">Сценарий</div>
+    <p>Вы изучили архитектуру. Теперь ваш лид хочет, чтобы вы увидели реальные, сложные граничные случаи, которые возникают в production, и прошли полную историю EasyStaff Global: 7 900+ компаний, 20+ городов, 8 региональных кампаний. Вы также увидите все вариации, которые отличают лучшие практики от посредственных.</p>
+  </div>
+
+  <!-- CRITICAL EDGE CASES -->
+  <h2>8 критических граничных случаев</h2>
+
+  <h3>1. Разрешение идентификации компании (мультидомен)</h3>
+  <p><strong>Проблема:</strong> Одна компания может иметь несколько доменов: <code>acme.com</code>, <code>acme.ae</code>, <code>acme.co.uk</code>. Apollo говорит "Frizzon Studios", Clay говорит "Frizzon Productions". Дедупликация по домену не ловит эти случаи.</p>
+  <p><strong>Решение:</strong> Двухуровневая дедупликация:</p>
+  <ul>
+    <li><strong>Уровень 1 (мгновенный, бесплатный):</strong> Точное совпадение домена после нормализации (удалить www, нижний регистр)</li>
+    <li><strong>Уровень 2 (нечёткий, в фазе PRE-FILTER):</strong> Сходство названия компании (Levenshtein или trigram) + сопоставление LinkedIn URL. Если две DiscoveredCompanies совместно используют LinkedIn company URL → объединить.</li>
+  </ul>
+  <p><strong>Реализация:</strong> <code>discovered_companies.linkedin_company_url</code> как вторичный уникальный идентификатор. При вставке проверить оба домена И linkedin URL. Если linkedin совпадает с существующей с другим доменом → связать как alias, не создавать дублик.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>company_aliases схема таблицы</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>-- Опционально: таблица aliases компаний для мультидоменных сущностей
+company_aliases
+├── primary_company_id    FK(discovered_companies)
+├── alias_domain          VARCHAR(255)
+├── alias_linkedin_url    TEXT
+├── alias_name            VARCHAR(500)
+├── detected_by           VARCHAR(50)   -- domain_match | linkedin_match | name_fuzzy | manual</code></pre>
+    </div>
+  </details>
+
+  <h3>2. Фаза разрешения доменов</h3>
+  <p><strong>Проблема:</strong> 8 766 компаний из вкладки Companies имеют LinkedIn URLs, но НЕ имеют доменов. Невозможно скрепить веб-сайты или проверить email enrichment без доменов.</p>
+  <p><strong>Решение:</strong> Новая фаза конвейера RESOLVE между PRE-FILTER и SCRAPE:</p>
+  <ol>
+    <li><strong>LinkedIn → домен:</strong> Apollo <code>enrich_organization(linkedin_url)</code> возвращает <code>primary_domain</code> (1 credit за вызов, но высокое значение)</li>
+    <li><strong>Имя компании → домен:</strong> Google search <code>"{company_name}" site:{country_tld}</code> → извлечь домен из первого результата</li>
+    <li><strong>Пропустить, если необязательно:</strong> Запускать только для компаний, у которых отсутствует домен после GATHER</li>
+    <li><strong>Бюджет-ограничено:</strong> Оператор утверждает размер партии перед потратой Apollo credits</li>
+  </ol>
+
+  <h3>3. Lineage повторного запуска</h3>
+  <p><strong>Проблема:</strong> Оператор хочет повторно запустить поиск с 2 недель назад, потому что "Apollo может иметь новые компании сейчас." Но <code>filter_hash</code> дедупликация отклонит это как дублик.</p>
+  <p><strong>Решение:</strong> <code>parent_run_id</code> на <code>gathering_runs</code>:</p>
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>parent_run_id схема и логика</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs.parent_run_id  FK(gathering_runs) NULL  -- "это повторный запуск run #42"</code></pre>
+      <p style="margin-top: 12px;">Когда <code>parent_run_id</code> установлен, дедупликация filter_hash пропускается. Система сравнивает результаты: "Run #42 нашла 5 602 компании. Re-run #65 нашла 5 840. Net new: 238."</p>
+    </div>
+  </details>
+
+  <h3>4. Provenance конверсии (полное отслеживание воронки)</h3>
+  <p><strong>Проблема:</strong> "Какой gathering run действительно привёл к сделке, которую мы закрыли?" Невозможно ответить без отслеживания цепи: <code>gathering_run → DiscoveredCompany → ExtractedContact → Contact → Campaign → ProcessedReply → Meeting</code>.</p>
+  <p><strong>Решение:</strong> Частично решено. Добавить: <code>contacts.gathering_run_id</code> FK для прямой lineage.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Запрос полного отслеживания воронки</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT gr.source_type, gr.filters->>'person_locations' AS location,
+  COUNT(DISTINCT dc.id) AS companies, COUNT(DISTINCT ec.id) AS contacts,
+  COUNT(DISTINCT c.id) AS crm_contacts, COUNT(DISTINCT m.id) AS meetings
+FROM gathering_runs gr
+JOIN company_source_links csl ON csl.gathering_run_id = gr.id
+JOIN discovered_companies dc ON dc.id = csl.discovered_company_id
+LEFT JOIN extracted_contacts ec ON ec.discovered_company_id = dc.id
+LEFT JOIN contacts c ON c.gathering_run_id = gr.id
+LEFT JOIN meetings m ON m.contact_id = c.id
+WHERE gr.project_id = :project_id
+GROUP BY gr.id
+ORDER BY meetings DESC;</code></pre>
+    </div>
+  </details>
+
+  <h3>5. Центральное управление квотой</h3>
+  <p><strong>Проблема:</strong> Два оператора одновременно запускают Apollo поиск → оба попадают на лимит 429. Или MCP agent израсходует все Clay credits в одном запуске.</p>
+  <p><strong>Решение:</strong> Трекер квоты уровня адаптера (не БД — в памяти с Redis или простой file lock).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Класс QuotaManager (Python)</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>class QuotaManager:
+    """Центральный трекер квоты за платформу источника."""
+
+    async def acquire(self, platform: str, credits: int, timeout: int = 300) -> bool:
+        """Запросить credits. Блокирует до доступности или timeout."""
+
+    async def release(self, platform: str, credits: int) -> None:
+        """Вернуть неиспользованные credits (например, поиск вернул меньше результатов, чем ожидалось)."""
+
+    async def get_usage(self, platform: str) -> QuotaUsage:
+        """Текущее использование: {used_today, limit_today, used_this_hour, limit_this_hour}."""</code></pre>
+      <p style="margin-top: 12px;">Каждый адаптер вызывает <code>quota_manager.acquire()</code> перед вызовами API. Менеджер уважает лимиты для каждой платформы (Apollo 200/min, Clay 5000 exports/day, и т.д.).</p>
+    </div>
+  </details>
+
+  <h3>6. Стратегия параллельного сбора</h3>
+  <p><strong>Проблема:</strong> Для нового проекта оператор хочет одновременно искать Apollo People + Apollo Companies + Clay TAM, затем объединить результаты.</p>
+  <p><strong>Решение:</strong> Несколько <code>gathering_runs</code> совместно используют одно и то же <code>pipeline_run_id</code>. Конвейер ждёт, пока ВСЕ запуски с этим <code>pipeline_run_id</code> завершатся, прежде чем переходить к DEDUP.</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>функция start_parallel_gathering Python</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>async def start_parallel_gathering(
+    project_id: int,
+    searches: list[dict],  # [{source_type, filters}, ...]
+) -> PipelineRun:
+    """Запустить несколько gathering runs параллельно, объединить при завершении."""
+    pipeline_run = PipelineRun(project_id=project_id, status="RUNNING")
+    for search in searches:
+        gathering_run = GatheringRun(
+            pipeline_run_id=pipeline_run.id,
+            source_type=search["source_type"],
+            filters=search["filters"],
+        )
+        # Запустить adapter.execute() как фоновую задачу
+    # Конвейер продолжается к DEDUP только когда все запуски завершены</code></pre>
+    </div>
+  </details>
+
+  <h3>7. Loop обучения эффективности</h3>
+  <p><strong>Проблема:</strong> После 10 gathering runs, оператор хочет узнать: "Какая комбинация source type + filter дала лучший target rate?"</p>
+  <p><strong>Решение:</strong> Добавить вычисляемые метрики в <code>gathering_runs</code> (заполняется после фазы ANALYZE).</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Метрики сбора и запрос dashboard</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs (дополнительные столбцы):
+├── target_rate            FLOAT     -- targets_found / new_companies_count
+├── avg_analysis_confidence FLOAT    -- средняя confidence целей из этого запуска
+├── cost_per_target_usd    NUMERIC   -- total_cost_usd / targets_found
+├── enrichment_hit_rate    FLOAT     -- emails_found / targets_enriched</code></pre>
+      <pre style="margin-top: 12px;"><code>SELECT source_type, source_subtype,
+  COUNT(*) AS runs,
+  AVG(target_rate) AS avg_target_rate,
+  AVG(cost_per_target_usd) AS avg_cost_per_target
+FROM gathering_runs
+WHERE project_id = :pid AND status = 'completed' AND target_rate IS NOT NULL
+GROUP BY source_type, source_subtype
+ORDER BY avg_target_rate DESC;</code></pre>
+      <p style="margin-top: 12px;">Этот feedback loop позволяет системе (или MCP агенту) рекомендовать: "Apollo seniority search имеет 22% target rate для этого проекта. Clay companies search имеет 8%. Рекомендуется использовать Apollo."</p>
+    </div>
+  </details>
+
+  <h3>8. Гибкость экспорта (подключаемые выходы)</h3>
+  <p><strong>Проблема:</strong> Результаты должны идти в разные направления: Google Sheets (отзыв), CSV (скачать), SmartLead (кампания), GetSales (LinkedIn), Clay table (дальнейший enrichment), webhook (пользовательская интеграция).</p>
+  <p><strong>Решение:</strong> Output адаптеры (тот же паттерн, что и gathering адаптеры):</p>
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>OutputAdapter паттерн и 6 типов выходов</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>class OutputAdapter(ABC):
+    output_type: str  # "google_sheets" | "csv" | "smartlead" | "getsales" | "clay_table" | "webhook"
+
+    async def export(self, companies: list, contacts: list, config: dict) -> ExportResult</code></pre>
+      <p style="margin-top: 12px;"><strong>6 типов выходов:</strong></p>
+      <ul>
+        <li><code>google_sheets</code> — экспорт в Google Sheets для отзыва и ручной сортировки</li>
+        <li><code>csv</code> — скачать как CSV для внешних инструментов</li>
+        <li><code>smartlead</code> — отправить кампанию напрямую в SmartLead (leads + sequence)</li>
+        <li><code>getsales</code> — интеграция LinkedIn для GetSales кампаний</li>
+        <li><code>clay_table</code> — добавить в Clay table для дальнейшего enrichment</li>
+        <li><code>webhook</code> — POST в custom webhook для интеграций</li>
+      </ul>
+      <p style="margin-top: 12px;">Частично существует: <code>clay_service.export_to_google_sheets()</code>, <code>pipeline_service.promote_to_crm()</code>, SmartLead push. Нужно только формализовать как адаптеры.</p>
+    </div>
+  </details>
+
+  <!-- REAL-WORLD EXAMPLE -->
+  <h2>Реальный пример: EasyStaff Global (Project 9)</h2>
+  <p>Этот конвейер использовался для сбора, анализа и проверки <strong>7 900+ целевых компаний</strong> в <strong>20+ городах</strong>. Конвейер создал <strong>8 новых SmartLead кампаний</strong> (региональные разделения: US, UK, Gulf, India, APAC, Australia, LatAm-Africa, плюс варианты). EasyStaff Global имеет примерно 170 кампаний в общей сложности — большинство были созданы до существования этого конвейера, посредством ручных процессов.</p>
+
+  <h3>Пошагово: Полный 11-шаговый конвейер</h3>
+
+  <div class="wiki-timeline">
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">1</span><span class="wiki-timeline__title">GATHER из Apollo</span></div>
+      <div class="wiki-timeline__body">Применить фильтры keyword + city + size к Apollo Companies UI. ~80 ключевых слов × 20 городов = 50+ gathering runs. Фильтры каждого run <strong>сохранены</strong> в <code>gathering_runs.filters</code> (JSONB).</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Puppeteer emulator — бесплатно</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">2</span><span class="wiki-timeline__title">DEDUP + BLACKLIST</span></div>
+      <div class="wiki-timeline__body">Нормализация доменов → <code>company_source_links</code> (multi-source bridge). Проверка против 170 существующих кампаний EasyStaff → отклонение пересечений.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">★ CP1 — оператор подтверждает scope проекта</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">3</span><span class="wiki-timeline__title">SCRAPE веб-сайтов</span></div>
+      <div class="wiki-timeline__body">50 параллельных соединений, streaming per-company commits. Crash-safe: <code>on_result</code> callback сохраняет каждую компанию индивидуально.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">httpx + Apify proxy — бесплатно</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">4</span><span class="wiki-timeline__title">PRE-FILTER алгоритмически</span></div>
+      <div class="wiki-timeline__body">Без AI — детерминированный. Удалить: веб-сайт недоступен, офлайн индустрии (ресторан, отель, строительство), мусорные домены (.gov, .edu), пустые/припаркованные сайты. ~40-60% отклонение — дёшево, быстро, без ложных отрицаний.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Детерминированный — $0</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">5</span><span class="wiki-timeline__title">ANALYZE от GPT-4o-mini</span></div>
+      <div class="wiki-timeline__body">AI классифицирует каждую компанию: is_target? confidence? segment? reasoning? Использует ICP prompt конкретно для этого проекта.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--cheap">~$0.01-0.05 за batch из 500</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">6</span><span class="wiki-timeline__title">VERIFY от Opus (Claude)</span></div>
+      <div class="wiki-timeline__body">16 параллельных Opus агентов проверяют ВСЕ GPT targets. Каждый агент получает ~260 компаний, проверяет вердикт GPT. Находит false positives: SaaS products, solo consultants, неправильная география, government entities.</div>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">7</span><span class="wiki-timeline__title">ADJUST PROMPT</span></div>
+      <div class="wiki-timeline__body">Повторить шаги 5→6 до ≥90% accuracy. Это критический loop (см. все 8 версий ниже).</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">↺ Если &lt; 90% → назад к Шагу 5</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">8</span><span class="wiki-timeline__title">PEOPLE SEARCH</span></div>
+      <div class="wiki-timeline__body">Найти до 3 лиц, принимающих решения, на проверенную целевую компанию. Фильтры: founder, c_suite, vp, director seniority. Результат: ~1.4 контакта на компанию в среднем.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--free">Apollo People emulator — бесплатно</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">9</span><span class="wiki-timeline__title">FINDYMAIL email verification</span></div>
+      <div class="wiki-timeline__body">Для contacts, где Apollo не предоставляет проверенные emails. 438 contacts проверены в одном 88-min batch.</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--expensive">$0.01/email</span>
+      <span class="wiki-timeline__meta wiki-timeline__meta--stop">★ CP3 — оператор утверждает потрату</span>
+    </div>
+    <div class="wiki-timeline__step wiki-timeline__step--expensive">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">10</span><span class="wiki-timeline__title">GOD_SEQUENCE</span></div>
+      <div class="wiki-timeline__body">Генерация campaign sequence через Gemini 2.5 Pro. Система собирает knowledge из 3 уровней в один prompt (см. GOD_SEQUENCE 3-level knowledge system ниже).</div>
+      <span class="wiki-timeline__meta wiki-timeline__meta--cheap">~$0.08 за generation</span>
+    </div>
+    <div class="wiki-timeline__step">
+      <div class="wiki-timeline__header"><span class="wiki-timeline__number">11</span><span class="wiki-timeline__title">SMARTLEAD campaign creation + lead upload</span></div>
+      <div class="wiki-timeline__body">Создаёт SmartLead campaign (DRAFT state). Загружает leads с custom fields: city, segment, sender_name. Добавляет 12 sender email accounts за кампанию. 8 региональных кампаний создано через этот конвейер.</div>
+    </div>
+  </div>
+
+  <h3>Глубокий разбор Шага 7: Loop итерации промпта (все 8 версий)</h3>
+  <p>Это то, что отличает хороший gathering от плохого. Конвейер не "запустить GPT один раз и отправить." Это закрытый loop, где Opus проверяет работу GPT, выявляет паттерны false-positive и кормит их обратно в уточнённые промпты. EasyStaff требовала 8 итераций:</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Версия</th>
+        <th>Точность</th>
+        <th>Размер выборки</th>
+        <th>Ключевое изменение / Находка</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="version-tag">V1</span></td>
+        <td><strong>0%</strong></td>
+        <td>—</td>
+        <td>Сложная scoring rubric, неправильные segments в целом. Полный перезапуск необходим.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V2</span></td>
+        <td><strong>76%</strong></td>
+        <td>—</td>
+        <td>Via negativa подход, CAPS_LOCKED segments. Лучше, но всё ещё пропускает граничные случаи.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V3</span></td>
+        <td><strong>93%</strong></td>
+        <td>Small sample</td>
+        <td>Geography filter, solo consultant exclusion. Близко, но нужна полная Opus validation.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V4</span></td>
+        <td><strong>83%</strong></td>
+        <td>Full Opus review</td>
+        <td>Strict location, investment exclusion. Over-corrected, отклонил некоторые валидные targets.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V5</span></td>
+        <td><strong>86%</strong></td>
+        <td>—</td>
+        <td>Entity type patterns, gov exclusion, country name detection. Фаза рафинирования.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V6</span></td>
+        <td><strong>88%</strong></td>
+        <td>—</td>
+        <td>Interior design, company formation, fake site detection. Приближаясь к threshold.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V7</span></td>
+        <td><strong>93.6%</strong></td>
+        <td>645/689 verified</td>
+        <td>Уточнённое SERVICE vs PRODUCT distinction. Opus ловит оставшиеся false positives.</td>
+      </tr>
+      <tr>
+        <td><span class="version-tag">V8</span></td>
+        <td><strong>95.1%</strong> ✓</td>
+        <td>2,645/2,782 verified</td>
+        <td>Финальный SERVICE business focus. Loop выходит когда ≥90% accuracy подтверждена.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p style="margin-top: 24px;"><strong>Логика loop:</strong> На каждой итерации Opus находит FP (false positive) patterns → добавить exclusions в промпт → re-analyze с обновленным GPT промптом → re-verify с Opus → измерить accuracy → если ≥90%, DONE; иначе iterate.</p>
+
+  <p style="margin-top: 16px;"><strong>Что Opus ловит, что GPT пропускает:</strong></p>
+  <ul>
+    <li>Game studios строящие own IP (не занимаются client work)</li>
+    <li>Management/strategy consulting (использует employees, не freelancers)</li>
+    <li>SaaS products (не service businesses)</li>
+    <li>Solo consultants / fractional CxOs (1-person operations)</li>
+    <li>Неправильная география (Indian "Pvt Ltd" entities, Oman, Lebanon)</li>
+    <li>Government subsidiaries</li>
+    <li>Investment/VC firms</li>
+  </ul>
+
+  <h3>Глубокий разбор Шага 10: GOD_SEQUENCE — 3-уровневая система знаний</h3>
+  <p>Campaign sequence не является AI магией — это <strong>knowledge engineering</strong>. Gemini получает 3 уровня контекста:</p>
+
+  <div class="god-sequence-levels">
+    <h4>УРОВЕНЬ 1: УНИВЕРСАЛЬНЫЙ</h4>
+    <p style="margin: 8px 0; font-style: italic;">Campaign patterns, которые применяются ко ВСЕМ проектам (без business context):</p>
+    <div class="level">
+      <strong>Subject line:</strong> <code>{{first_name}} – [pain point question]</code>
+      <br>
+      <strong>Timing:</strong> Day 0/3/4/7/7 (Steps 2+4 tied at 31% warm replies каждый)
+      <br>
+      <strong>Tone:</strong> Casual-professional, no hype words
+      <br>
+      <strong>Body arc:</strong> Hook → Value → Proof → CTA
+      <br>
+      <strong>CTA:</strong> Offer value ("calculate cost benefit?"), не просить время
+      <br>
+      <strong>Flow:</strong> Value → Competition → Price → Channel → Empathy
+    </div>
+
+    <h4>УРОВЕНЬ 2: БИЗНЕС</h4>
+    <p style="margin: 8px 0; font-style: italic;">Product knowledge, общий для проектов ОДНОГО и того же бизнеса (grouped by sender_company):</p>
+    <div class="level">
+      <strong>Пример:</strong> Project 9 + 40 = оба из "easystaff.io"
+      <br>
+      <strong>Включает:</strong>
+      <ul style="margin: 8px 0;">
+        <li>Competitors & competitive positioning</li>
+        <li>Pricing strategy (hourly, fixed, retainer)</li>
+        <li>Displacement stories (кого заменяете)</li>
+        <li>Proof points (case studies, ROI metrics)</li>
+        <li>Outreach/GTM patterns изученные из sibling projects</li>
+      </ul>
+    </div>
+
+    <h4>УРОВЕНЬ 3: ПРОЕКТ</h4>
+    <p style="margin: 8px 0; font-style: italic;">Специфичный контекст для ЭТОГО проекта только:</p>
+    <div class="level">
+      <strong>Включает:</strong>
+      <ul style="margin: 8px 0;">
+        <li>ICP (Ideal Customer Profile): точные компании sizes, industries, geographies</li>
+        <li>Market segment (например, "staffing agencies в UK LatAm focus")</li>
+        <li>Language & region (en-US, en-GB, es-ES)</li>
+        <li>Sender identity (name, title, company voice)</li>
+        <li>Existing contacts & relationship map (избежать дубликатов, персонализировать для accounts)</li>
+      </ul>
+    </div>
+
+    <p style="margin-top: 16px;"><strong>Все 3 уровня → ~3,000 token промпт → Gemini 2.5 Pro → 5-step sequence</strong></p>
+    <p style="margin-top: 12px;"><strong>API calls:</strong></p>
+    <ul>
+      <li><code>POST /api/campaign-intelligence/generate-sequence/</code> — Generate draft sequence</li>
+      <li><code>POST /api/campaign-intelligence/generated/{id}/approve/</code> — Mark as approved</li>
+      <li><code>POST /api/campaign-intelligence/generated/{id}/push/</code> — Push to SmartLead</li>
+    </ul>
+    <p style="margin-top: 12px;"><strong>Стоимость:</strong> ~$0.08 за generation</p>
+  </div>
+
+  <h3>Шаг 11: SmartLead Campaign Creation & Lead Upload</h3>
+  <p>Sequence теперь находится в SmartLead как DRAFT state. Оператор затем:</p>
+  <ol>
+    <li>Загружает leads с custom fields: <code>city</code>, <code>segment</code>, <code>sender_name</code></li>
+    <li>Добавляет 12 sender email accounts (типично для EasyStaff кампаний)</li>
+    <li>Personalization variables: <code>{{first_name}}</code>, <code>{{city}}</code>, <code>{{Sender Name}}</code></li>
+    <li>Активирует кампанию → outreach начинается</li>
+  </ol>
+  <p><strong>8 региональных кампаний создано через этот конвейер:</strong></p>
+  <ul>
+    <li>"Petr ES US"</li>
+    <li>"Petr ES UK"</li>
+    <li>"Petr ES Gulf"</li>
+    <li>"Petr ES India"</li>
+    <li>"Petr ES APAC"</li>
+    <li>"Petr ES Australia"</li>
+    <li>"Petr ES LatAm-Africa"</li>
+    <li>Плюс варианты (региональные+языковые комбинации)</li>
+  </ul>
+
+  <!-- KEYWORD EFFECTIVENESS TRACKING -->
+  <h3>Отслеживание эффективности ключевых слов</h3>
+  <p>Каждый gathering run хранит свои фильтры. После анализа, <code>target_rate</code> вычисляется за run. Это позволяет нам ранжировать keywords по ROI:</p>
+
+  <div class="keyword-tier">
+    <strong>Tier 1 (35-45%) — Лучшее</strong><br>
+    Keywords: staffing agency, design agency, marketing agency<br>
+    Они дают самое высокое значение. Приоритет здесь.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>Tier 2 (26-35%) — Хорошее</strong><br>
+    Keywords: outsourcing company, digital agency, creative agency<br>
+    Solid performance. Стоит продолжать.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>Tier 3 (14-23%) — Низкое</strong><br>
+    Keywords: software development, consulting firm, IT services<br>
+    Ниже ideal, но всё ещё полезно для coverage.
+  </div>
+
+  <div class="keyword-tier">
+    <strong>НЕ ИСПОЛЬЗОВАТЬ (<5%) — Отходы</strong><br>
+    Keywords: fintech, saas, blockchain, crypto<br>
+    Стоп. Это time wasters для этого ICP.
+  </div>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>SQL запрос для эффективности ключевых слов</span>
+      <span class="accordion__trigger-icon">▼</span>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>SELECT source_subtype, AVG(target_rate) AS avg_target_rate, COUNT(*) AS runs
+FROM gathering_runs
+WHERE project_id = 9 AND status = 'completed'
+GROUP BY source_subtype
+ORDER BY avg_target_rate DESC;</code></pre>
+    </div>
+  </details>
+
+  <!-- KEY LEARNINGS -->
+  <h2>Ключевые выводы</h2>
+
+  <div class="learning-item">
+    <strong>1. Puppeteer > API для gathering</strong>
+    <p>Apollo emulator бесплатен, API стоит credits. Использовали API только для 10K credits blitz для охвата большего количества keywords быстрее. Для большинства проектов свободный Puppeteer выигрывает на ROI.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>2. Loop итерации промпта незаменим</strong>
+    <p>V1 имела 0% accuracy, V8 достигла 95.1%. Восемь итераций, каждая управляется Opus false-positive analysis. Нет shortcut. Это core конкурентное преимущество.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>3. Эффективность ключевых слов варьируется в 10 раз</strong>
+    <p>"staffing agency" попадает на 45% target rate, "fintech" попадает меньше чем на 5%. Отследить <code>target_rate</code> за run избежать потери времени на плохих keywords. Data-driven keyword selection сокращает costs наполовину.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>4. Streaming scrape незаменим</strong>
+    <p>Старый batch scrape терял весь прогресс при крахе. Новый streaming подход commits per-company через <code>on_result</code> callback. 50 параллельных соединений, ~344 companies/min. Resilience бьёт raw speed.</p>
+  </div>
+
+  <div class="learning-item">
+    <strong>5. People search заполняет gap</strong>
+    <p>Apollo Companies даёт domains, но не contacts. Отдельный People search step находит 1-3 decision-makers на компанию. FindyMail только необходим для emails, которые Apollo не может проверить (10-15% contacts).</p>
+  </div>
+
+  <!-- SUMMARY PRINCIPLES -->
+  <h2>Итог: 11 принципов, которые делают это god-level</h2>
+
+  <div class="summary-principles">
+    <div class="principle">
+      <strong>1. Source-agnostic</strong>
+      <p>БД хранит opaque JSONB. Новый source = новый адаптер, нулевые изменения схемы БД. Добавить 10 sources без refactoring.</p>
+    </div>
+
+    <div class="principle">
+      <strong>2. Filter memory</strong>
+      <p>Каждый поиск запомнен с точными параметрами. Re-runnable & auditable. "Какие keywords использовали 3 месяца назад?"</p>
+    </div>
+
+    <div class="principle">
+      <strong>3. Multi-source dedup</strong>
+      <p>Одна компания найдена 5 sources → 1 DiscoveredCompany + 5 source_links. Нет дубликатов, полная lineage.</p>
+    </div>
+
+    <div class="principle">
+      <strong>4. Cheapest first</strong>
+      <p>Free pattern matching → free blacklist → cheap scraping → expensive AI → costly enrichment. Никогда не потратить на AI то, что free pattern-matching может сделать.</p>
+    </div>
+
+    <div class="principle">
+      <strong>5. Full provenance</strong>
+      <p>gathering_run → DiscoveredCompany → ExtractedContact → CRM Contact → Meeting → Deal. Ответить: "Какой gathering run привёл к этой сделке?"</p>
+    </div>
+
+    <div class="principle">
+      <strong>6. Versioned scraping</strong>
+      <p>Несколько страниц на компанию, TTL-based re-scrape, все версии сохранены. Веб-сайт изменился? Проверить историю версий.</p>
+    </div>
+
+    <div class="principle">
+      <strong>7. Multi-run analysis</strong>
+      <p>Разные модели, разные промпты, сравнить результаты, оператор override. Запустить GPT + Opus параллельно, выбрать лучшее или объединить.</p>
+    </div>
+
+    <div class="principle">
+      <strong>8. Approval gates</strong>
+      <p>Human-in-the-loop перед каждым credit-spending шагом. Нет runaway costs. Оператор подтверждает scope в DEDUP, снова перед FINDYMAIL.</p>
+    </div>
+
+    <div class="principle">
+      <strong>9. MCP-ready</strong>
+      <p>Адаптеры экспортируют JSON schemas. <code>tam_gather_{source}</code> tools auto-registered. Claude может вызвать: "gather 500 designers из New York."</p>
+    </div>
+
+    <div class="principle">
+      <strong>10. Learning loop</strong>
+      <p>target_rate, cost_per_target отслеживаются за run. Система рекомендует лучшие sources. "Apollo seniority search: 22% target rate. Clay companies: 8%. Рекомендуется Apollo."</p>
+    </div>
+
+    <div class="principle">
+      <strong>11. Project-aware</strong>
+      <p>Читает ICP, products, competitors, case studies, existing contacts. Не dumb filter machine. Каждый промпт формируется project context.</p>
+    </div>
+  </div>
+
+  <!-- TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">КЛЮЧЕВОЙ ВЫВОД</div>
+    <p>Урок 7 показывает вам полную картину: 8 граничных случаев, которые ломают наивные системы, реальный 11-шаговый EasyStaff конвейер (7 900+ компаний, 95.1% accuracy после уточнения промпта) и 11 принципов, лежащих в основе god-level инженерии. Секрет не в сложности — это ruthless дисциплина: бесплатно перед платным, человеческое утверждение перед потратой, полная provenance для каждого контакта и relentless feedback loop (Opus → промпт → re-analyze → re-verify) пока accuracy не плато. Теперь у вас есть и теория и real-world доказательство, что это работает.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <nav class="lesson-nav">
+    <a href="lesson-6-ru.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Предыдущий урок</span>
+      <span class="lesson-nav__title">Урок 6: Анализ мультимодели</span>
+    </a>
+    <a href="index-ru.html" class="lesson-nav__link" style="text-align: center;">
+      <span class="lesson-nav__label">Вернуться ко всем урокам</span>
+      <span class="lesson-nav__title">Индекс</span>
+    </a>
+  </nav>
+
+  <!-- COMPLETION BUTTON -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button class="btn btn--primary btn--lg" id="completeBtn" onclick="completeLesson()">
+      Отметить урок как пройденный
+    </button>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <p>Руководство по сбору TAM — Урок 7 из 7 | <a href="index-ru.html">Вернуться к индексу</a></p>
+  <p style="margin-top: 12px; font-size: 0.8125rem;">Полное руководство по построению промышленных конвейеров сбора данных. Изучите архитектуру, паттерны и уроки из 7 900+ обработанных компаний.</p>
+</footer>
+
+<script>
+  function completeLesson() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (!c.includes(7)) {
+      c.push(7);
+      localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+    }
+    document.getElementById('completeBtn').textContent = '✓ Пройден';
+    document.getElementById('completeBtn').disabled = true;
+  }
+
+  window.addEventListener('load', function() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (c.includes(7)) {
+      document.getElementById('completeBtn').textContent = '✓ Пройден';
+      document.getElementById('completeBtn').disabled = true;
+    }
+    const pct = Math.round((c.length / 7) * 100);
+    const bar = document.querySelector('.header-progress');
+    if (bar) bar.style.width = pct + '%';
+  });
+</script>
+
+</body>
+</html>

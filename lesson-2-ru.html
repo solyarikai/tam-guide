@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 2: Контекст проекта и режимы ввода — Руководство по архитектуре сбора TAM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="index-ru.html" class="site-header__logo">
+    <div class="site-header__logo-icon">📋</div>
+    TAM Guide
+  </a>
+  <nav class="site-header__nav">
+    <a href="index-ru.html">Все уроки</a>
+    <a href="lesson-1-ru.html">Урок 1</a>
+    <a href="lesson-2-ru.html" class="active">Урок 2</a>
+    <a href="lesson-3-ru.html">Урок 3</a>
+    <a href="lesson-4-ru.html">Урок 4</a>
+    <a href="lesson-5-ru.html">Урок 5</a>
+    <a href="lesson-6-ru.html">Урок 6</a>
+    <a href="lesson-7-ru.html">Урок 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-2.html" class="lang-switch__btn">EN</a>
+    <a href="lesson-2-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 28%;"></div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main-content guide-content">
+
+  <!-- LESSON HERO -->
+  <div class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Урок 2</span>
+    </div>
+    <h1>Контекст проекта и режимы ввода</h1>
+    <p class="body-lg">Узнайте, что система знает о вашем проекте, четыре способа запроса запуска сбора данных оператором и как система связывает запуски со сегментами для отслеживания и анализа.</p>
+  </div>
+
+  <!-- SCENARIO BLOCK -->
+  <div class="scenario">
+    <div class="scenario__label">Сценарий</div>
+    <p>Оператор открывает систему сбора TAM, хочет найти 5000 цифровых агентств в ОАЭ и начинает печатать запрос. Система мгновенно знает о целевом профиле (ICP) проекта, конкурентов, тематические исследования, существующих контактов и предыдущие попытки фильтрации. Она использует весь этот контекст, чтобы преобразовать простой запрос оператора в точные фильтры источников — без необходимости оператору понимать коды старшинства Apollo или диапазоны размеров компаний Clay.</p>
+  </div>
+
+  <!-- WHAT YOU'LL LEARN -->
+  <div class="learn-box">
+    <div class="learn-box__title">Чему вы научитесь</div>
+    <ul>
+      <li>10 источников данных, которые система читает из каждого проекта</li>
+      <li>Как ICP, сегменты и тематические исследования информируют решения по сбору</li>
+      <li>Четыре режима ввода оператора: естественный язык, структурированные фильтры, похожие, Expand/Repeat</li>
+      <li>Как запуски сбора связаны со сегментами для отслеживания TAM</li>
+      <li>Полный путь от конца к концу, когда оператор дает ввод на естественном языке</li>
+    </ul>
+  </div>
+
+  <h2>Что система знает о каждом проекте</h2>
+
+  <p>Система сбора данных работает не в вакууме. Она читает существующие знания проекта, чтобы принимать умные решения.</p>
+
+  <h3>Контекст проекта (уже существует в БД — переиспользовать, не перестраивать)</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Источник</th>
+          <th>Таблица/Поле</th>
+          <th>Как сбор использует это</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Определение ICP</strong></td>
+          <td><code>projects.target_segments</code>, <code>projects.target_industries</code></td>
+          <td>→ AI преобразует в фильтры, специфичные для источника. «Агентства &lt;50 сотр в ОАЭ» становится фильтрами Apollo по локации, старшинству и размеру</td>
+        </tr>
+        <tr>
+          <td><strong>Сегменты</strong></td>
+          <td><code>kb_segments</code> (гибкие данные JSON на сегмент)</td>
+          <td>→ Каждый сегмент может иметь собственную конфигурацию сбора. Сегмент «Dubai Agencies» → apollo.companies.emulator с фильтрами ОАЭ. Сегмент «AU-PH Corridor» → clay.people.emulator с фильтрами филиппинского языка</td>
+        </tr>
+        <tr>
+          <td><strong>Продукты</strong></td>
+          <td><code>kb_products</code> (что мы продаем)</td>
+          <td>→ Подсказка анализа AI: «Нуждается ли эта компания в {product}?»</td>
+        </tr>
+        <tr>
+          <td><strong>Конкуренты</strong></td>
+          <td><code>kb_competitors</code> (домены, сильные стороны, слабые стороны)</td>
+          <td>→ Автоматическая блокировка доменов конкурентов. Не собирайте компании, которые уже используют конкурента</td>
+        </tr>
+        <tr>
+          <td><strong>Тематические исследования</strong></td>
+          <td><code>kb_case_studies</code> (отрасль клиента, размер, вызов, решение)</td>
+          <td>→ Поиск похожих: «Найдите компании, похожие на этих клиентов»</td>
+        </tr>
+        <tr>
+          <td><strong>Профиль компании</strong></td>
+          <td><code>kb_company_profile</code> (кто МЫ есть)</td>
+          <td>→ Контекст анализа AI: «Мы есть {company}, мы предлагаем {products}»</td>
+        </tr>
+        <tr>
+          <td><strong>Знания проекта</strong></td>
+          <td><code>project_knowledge</code> (category=icp/outreach/contacts/gtm)</td>
+          <td>→ Богатый контекст ICP, правила outreach, GTM стратегия</td>
+        </tr>
+        <tr>
+          <td><strong>Существующие контакты</strong></td>
+          <td><code>contacts</code> + <code>campaigns</code> (CRM)</td>
+          <td>→ Черный список: не переориентировать компании, уже находящиеся в outreach</td>
+        </tr>
+        <tr>
+          <td><strong>Enterprise черный список</strong></td>
+          <td><code>project_blacklist</code> + <code>enterprise_blacklist.json</code></td>
+          <td>→ Жесткое исключение перед любой обработкой</td>
+        </tr>
+        <tr>
+          <td><strong>Предыдущие запуски сбора</strong></td>
+          <td><code>gathering_runs</code> (эта система)</td>
+          <td>→ «Не повторяйте фильтры, которые дали &lt;5% целевой коэффициент»</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Режимы ввода оператора</h2>
+
+  <p>Когда оператор (или агент MCP) запускает запуск сбора, он может предоставить ввод несколькими способами:</p>
+
+  <h3>Режим 1: Естественный язык (самый простой, оптимизирован для MCP)</h3>
+
+  <p><strong>Пример:</strong> «Найти 5000 цифровых агентств в ОАЭ с &lt;100 сотрудниками»</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ AI преобразует в фильтры, используя контекст ICP и сегмента проекта<br>→ Предлагает лучший источник (Apollo для широкого, Clay для специфичного)<br>→ Возвращает предполагаемые результаты + стоимость</p>
+  </div>
+
+  <h3>Режим 2: Структурированные фильтры (опытные операторы, точность)</h3>
+
+  <p><strong>Пример:</strong></p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Показать JSON
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>{
+  "source_type": "apollo.people.emulator",
+  "filters": {
+    "person_locations": ["Dubai, United Arab Emirates"],
+    "person_seniorities": ["founder", "c_suite"],
+    "organization_num_employees_ranges": ["1,10", "11,50", "51,100"]
+  }
+}</code></pre>
+    </div>
+  </details>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Пропускает преобразование AI, прямое выполнение</p>
+  </div>
+
+  <h3>Режим 3: Похожие (из тематических исследований или существующих клиентов)</h3>
+
+  <p><strong>Пример:</strong> «Найти компании, похожие на: frizzon.ae, 10xbrand.com, zopreneurs.com»</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Обратный инжиниринг шаблонов (отрасль, размер, локация, tech stack)<br>→ Создание фильтров, которые соответствуют шаблону<br>→ Уже частично существует: <code>reverse_engineering_service.py</code></p>
+  </div>
+
+  <h3>Режим 4: Expand/Repeat (итерация по предыдущим запускам)</h3>
+
+  <p><strong>Пример:</strong> «Запустить тот же поиск, что и gathering_run #42, но для Сингапура вместо Дубая»</p>
+
+  <div class="callout callout--info">
+    <div class="callout__icon">ℹ️</div>
+    <p>→ Копировать фильтры, изменить локацию<br>→ Дедупликация фильтров (проверка хэша) предотвращает случайные дубликаты</p>
+  </div>
+
+  <h2>Связь запуска сбора ↔ сегмента</h2>
+
+  <p>Каждый запуск сбора МОЖЕТ быть связан с определенным сегментом:</p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      Показать код
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre><code>gathering_runs.segment_id  FK(kb_segments) NULL</code></pre>
+    </div>
+  </details>
+
+  <p>Это позволяет системе:</p>
+
+  <ul>
+    <li><strong>Отслеживать, какие сегменты были собраны</strong> (и какие нет)</li>
+    <li><strong>Рассчитать TAM на уровне сегмента:</strong> «Сегмент Dubai Agencies: 5150 найдено компаний, 1200 проанализировано, 340 целевых, 89 обогащено»</li>
+    <li><strong>Предложить недостаточно собранные сегменты:</strong> «AU-PH Corridor имеет 0 запусков сбора — рассмотрите начало»</li>
+  </ul>
+
+  <h2>Как все это связывается: естественный язык к фильтрам</h2>
+
+  <p>Когда оператор дает ввод на естественном языке, вот путь в 10 шагов:</p>
+
+  <ol>
+    <li><strong>Оператор говорит:</strong> «Найти 5000 цифровых агентств в ОАЭ с &lt;100 сотрудниками»</li>
+    <li><strong>Система загружает контекст проекта:</strong> Извлекает ICP, сегменты, продукты, конкурентов, тематические исследования из KB</li>
+    <li><strong>AI преобразует намерение в измерения:</strong> «агентства» = тег отрасли, «ОАЭ» = локация, «&lt;100 сотрудников» = диапазон размера</li>
+    <li><strong>AI выбирает лучший источник:</strong> Смотрит на source_label + исторический уровень успеха. Apollo's «companies.emulator» → хорошо для широких поисков. Clay's «people.api» → лучше для таргетирования, специфичного для основателя. Выбирает Apollo.</li>
+    <li><strong>AI создает канонические фильтры:</strong> Читает схему фильтров Apollo из source_config, переводит «цифровые агентства в ОАЭ» в фильтры, специфичные для Apollo: <code>{"company_industries": ["software", "digital_marketing"], "company_locations": ["Dubai, UAE"], "organization_num_employees_ranges": ["1,10", "11,50", "51,100"]}</code></li>
+    <li><strong>Система проверяет filter_hash:</strong> Вычисляет SHA256 отсортированного канонического JSON. Проверяет, запускалась ли эта комбинация фильтров раньше. Если да, показывает статистику последнего запуска: «Похожие фильтры нашли 3847 компаний на прошлой неделе; 412 прошли анализ (10.7% целевой коэффициент)»</li>
+    <li><strong>Система оценивает стоимость + результаты:</strong> «Предполагаемо 4200 результатов, Apollo будет стоить ~$210 (по $0.05/компания), Clay будет стоить ~$840. Используйте Apollo.»</li>
+    <li><strong>Система показывает предварительный просмотр:</strong> «Готовы к запуску? Запуск сбора будет: source=apollo.companies.emulator, filters={...}, предполагаемый результат 4200, стоимость $210. Одобрить?»</li>
+    <li><strong>Оператор одобряет.</strong> Система создает запись <code>gathering_runs</code> с status=pending, filters=JSON, filter_hash=SHA256, segment_id=(дополнительно)</li>
+    <li><strong>Выполнить и отслеживать:</strong> Собирает сырые результаты, дедублирует против discovered_companies, черные списки и продвигается через трубопровод — все используя фильтры, сохраненные в записи gathering_run.</li>
+  </ol>
+
+  <!-- KEY TAKEAWAY -->
+  <div class="takeaway">
+    <div class="takeaway__title">Ключевой вывод</div>
+    <p>Контекст проекта — это не просто украшение — это двигатель умных значений по умолчанию. Система читает 10 источников данных (ICP, сегменты, продукты, конкуренты, тематические исследования, профиль компании, знания проекта, существующие контакты, черные списки, прошлые запуски) и использует их для преобразования намерения оператора в точные, специфичные для источника фильтры. Операторы могут запросить 4 способами (естественный язык, структурированные фильтры, похожие, expand/repeat), и каждый запуск сбора может быть связан со сегментом для отслеживания TAM. Этот дизайн делает систему как удобной для оператора, так и детерминированной: фильтры всегда явные, всегда сохраняются и всегда воспроизводимы.</p>
+  </div>
+
+  <!-- LESSON NAV -->
+  <div class="lesson-nav">
+    <a href="lesson-1-ru.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Предыдущий урок</span>
+      <span class="lesson-nav__title">Общая картина</span>
+    </a>
+    <a href="lesson-3-ru.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Следующий урок</span>
+      <span class="lesson-nav__title">Уровень данных</span>
+    </a>
+  </div>
+
+  <!-- MARK COMPLETE BUTTON -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button id="markCompleteBtn" class="btn btn--primary btn--lg" onclick="markLessonComplete(2)">
+      Отметить урок как пройденный
+    </button>
+  </div>
+
+</main>
+
+<!-- SITE FOOTER -->
+<footer class="site-footer">
+  <p>Руководство по архитектуре сбора TAM &copy; 2024. Сделано с ясностью и намерением.</p>
+  <p><a href="index-ru.html">Вернуться к все урокам</a></p>
+</footer>
+
+<!-- COMPLETION TRACKING SCRIPT -->
+<script>
+function markLessonComplete(n) {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (!c.includes(n)) {
+    c.push(n);
+    localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+  }
+  document.getElementById('markCompleteBtn').textContent = '✓ Пройден';
+  document.getElementById('markCompleteBtn').disabled = true;
+}
+
+window.addEventListener('load', function() {
+  let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+  if (c.includes(2)) {
+    document.getElementById('markCompleteBtn').textContent = '✓ Пройден';
+    document.getElementById('markCompleteBtn').disabled = true;
+  }
+});
+</script>
+
+</body>
+</html>

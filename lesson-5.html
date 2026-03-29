@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: CRM Blacklist & Approval Gates — TAM Gathering Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+  <script>
+    function toggleAccordion(el) {
+      el.open = !el.open;
+    }
+  </script>
+</head>
+<body>
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="site-header">
+  <a href="index.html" class="site-header__logo">
+    <span class="site-header__logo-icon">📊</span>
+    <span>TAM Guide</span>
+  </a>
+  <nav class="site-header__nav">
+    <a href="index.html">All Lessons</a>
+    <a href="lesson-1.html">Lesson 1</a>
+    <a href="lesson-2.html">Lesson 2</a>
+    <a href="lesson-3.html">Lesson 3</a>
+    <a href="lesson-4.html">Lesson 4</a>
+    <a href="lesson-5.html" class="active">Lesson 5</a>
+    <a href="lesson-6.html">Lesson 6</a>
+    <a href="lesson-7.html">Lesson 7</a>
+  </nav>
+  <div class="lang-switch">
+    <a href="lesson-5.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+    <a href="lesson-5-ru.html" class="lang-switch__btn">RU</a>
+  </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  <div class="header-progress" style="width: 71%;"></div>
+</header>
+
+<!-- ============================================
+     MAIN CONTENT
+     ============================================ -->
+<main class="main-content guide-content">
+
+  <!-- Lesson Hero -->
+  <section class="lesson-hero">
+    <div class="lesson-hero__number">
+      <span class="lesson-hero__badge">Lesson 5</span>
+    </div>
+    <h1>CRM Blacklist & Approval Gates</h1>
+    <p class="body-lg" style="margin-top: 12px; color: var(--color-neutral-600);">
+      Learn how the system prevents duplicate outreach and controls spending before credit-consuming operations.
+    </p>
+  </section>
+
+  <!-- Scenario -->
+  <section class="scenario">
+    <div class="scenario__label">The Scenario</div>
+    <p>
+      Your operator is running a gathering for Project 10 (Inxy, crypto payments). They've found 134 domains.
+      45 are in their own campaigns. But 89 appear in EasyStaff RU's active campaigns (Project 40, payroll offering).
+      Should the Inxy gathering auto-reject all 89 to avoid "contacting the same companies"?
+    </p>
+  </section>
+
+  <!-- The Critical Design Decision -->
+  <h2>The Critical Design Decision</h2>
+  <p>
+    <strong>Answer: No, absolutely not.</strong> Those 89 domains appear in EasyStaff's campaigns, not Inxy's.
+    They represent different value propositions being sold to potentially different buyer personas within the same company.
+  </p>
+
+  <div class="callout callout--warning">
+    <svg class="callout__icon" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+    <p>
+      <strong>Cross-Project Rule:</strong> Only same-project campaigns trigger auto-rejection.
+      Other projects' campaigns are shown as warnings. This preserves TAM across projects
+      and respects the autonomy of parallel business lines.
+    </p>
+  </div>
+
+  <!-- Blacklist Check Layers -->
+  <h2>Blacklist Check Layers (in order)</h2>
+  <p>
+    The system checks domains against four layers, in strict sequence. Each layer has different scope and action.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Layer</th>
+          <th>Scope</th>
+          <th>Action</th>
+          <th>What it catches</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Project blacklist</strong></td>
+          <td>Per-project</td>
+          <td>Auto-reject</td>
+          <td><code>project_blacklist</code> table — manual bans by operator</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Same-project campaigns</strong></td>
+          <td>Per-project</td>
+          <td>Auto-reject</td>
+          <td>Contacts with domains in THIS project's active campaigns</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Enterprise blacklist</strong></td>
+          <td>Global</td>
+          <td>Auto-reject</td>
+          <td><code>enterprise_blacklist.json</code> — competitors, banned orgs</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Cross-project campaigns</strong></td>
+          <td>All projects</td>
+          <td><strong>Warning only</strong></td>
+          <td>Domains in OTHER projects' campaigns (informational)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- What the Operator Sees -->
+  <h2>What the Operator Sees</h2>
+  <p>
+    When a blacklist check completes, the system returns two arrays: rejected domains (with reasons)
+    and warning domains (informational only). Here's the exact JSON structure:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>Example: rejected_domains + warning_domains JSON</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <p><strong>Rejected domains response:</strong></p>
+      <pre>{
+  "rejected_domains": [
+    {
+      "domain": "acme.com",
+      "company_name": "Acme Corp",
+      "reason": "same_project_campaign",
+      "detail": "3 contacts in 2 campaigns",
+      "campaigns": [
+        "EasyStaff - Dubai Agencies v3",
+        "EasyStaff - UAE IT Companies"
+      ],
+      "contact_count": 3
+    },
+    {
+      "domain": "banned-competitor.com",
+      "company_name": "Banned Competitor Inc",
+      "reason": "enterprise_blacklist",
+      "detail": "Listed in global blocklist",
+      "campaigns": null,
+      "contact_count": null
+    }
+  ],
+  "warning_domains": [
+    {
+      "domain": "bigcorp.com",
+      "company_name": "BigCorp",
+      "other_project_name": "Inxy",
+      "other_project_id": 10,
+      "other_contact_count": 5,
+      "other_campaigns": ["Inxy - Crypto Companies Q1"]
+    }
+  ]
+}</pre>
+      <p style="margin-top: 16px;">
+        <strong>Why this matters:</strong> If the system has assigned a campaign to the wrong project
+        (e.g., an EasyStaff campaign mistakenly tagged as Project 10), the operator can see it in
+        the detailed breakdown and fix the campaign → project mapping.
+      </p>
+    </div>
+  </details>
+
+  <!-- Edge Cases -->
+  <h2>Edge Cases</h2>
+  <p>
+    These six scenarios show how the system behaves in tricky situations:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>Behavior</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Domain in project A campaigns, gathering for project B</td>
+          <td><strong>Warning</strong> (not rejected) — different value prop</td>
+        </tr>
+        <tr>
+          <td>Domain in project A campaigns, gathering for project A</td>
+          <td><strong>Rejected</strong> — already in outreach</td>
+        </tr>
+        <tr>
+          <td>Domain in enterprise blacklist</td>
+          <td><strong>Rejected</strong> regardless of project</td>
+        </tr>
+        <tr>
+          <td>Domain in project blacklist for project A, gathering for project B</td>
+          <td><strong>Not rejected</strong> — blacklist is per-project</td>
+        </tr>
+        <tr>
+          <td>Campaign wrongly assigned to project</td>
+          <td>Operator sees campaign names in detail → can fix mapping</td>
+        </tr>
+        <tr>
+          <td>Contact has NULL project_id</td>
+          <td>Ignored — unassigned contacts don't trigger blacklist</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Materialized View -->
+  <h2>Materialized View: Fast Domain Lookups</h2>
+  <p>
+    The system maintains a project-scoped materialized view of all active campaign domains.
+    This enables sub-millisecond checks during gathering:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>CREATE MATERIALIZED VIEW active_campaign_domains (SQL)</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre>CREATE MATERIALIZED VIEW active_campaign_domains AS
+SELECT DISTINCT
+  lower(c.domain) AS domain,
+  c.project_id,
+  p.name AS project_name,
+  array_agg(DISTINCT camp.id) AS campaign_ids,
+  array_agg(DISTINCT camp.name) AS campaign_names,
+  count(DISTINCT c.id) AS contact_count
+FROM contacts c
+JOIN projects p ON p.id = c.project_id
+JOIN campaigns camp ON camp.project_id = c.project_id
+  AND camp.status = 'active'
+WHERE c.domain IS NOT NULL AND c.domain != ''
+GROUP BY lower(c.domain), c.project_id, p.name;
+
+CREATE UNIQUE INDEX ON active_campaign_domains(domain, project_id);
+CREATE INDEX ON active_campaign_domains(project_id);</pre>
+
+      <p style="margin-top: 16px;"><strong>Query patterns:</strong></p>
+      <ul>
+        <li><strong>Same-project check:</strong> <code>WHERE domain = ANY(:domains) AND project_id = :pid</code></li>
+        <li><strong>Cross-project check:</strong> <code>WHERE domain = ANY(:domains) AND project_id != :pid</code></li>
+      </ul>
+
+      <p style="margin-top: 16px;">
+        <strong>Refresh strategy:</strong>
+        <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> after campaign sync in
+        <code>crm_scheduler.py</code> and after any campaign push. No locks needed.
+      </p>
+    </div>
+  </details>
+
+  <!-- DiscoveredCompanies Check -->
+  <h2>Also Check: Previously Discovered Companies</h2>
+  <p>
+    The system also prevents re-processing companies from earlier gathering runs in the same project:
+  </p>
+
+  <details class="accordion">
+    <summary class="accordion__trigger">
+      <span>SELECT query for discovered_companies (SQL)</span>
+      <svg class="accordion__trigger-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </summary>
+    <div class="accordion__content">
+      <pre">-- Companies already in the system for THIS project (not globally)
+SELECT DISTINCT domain FROM discovered_companies
+WHERE domain = ANY(:domains) AND project_id = :pid
+  AND status != 'REJECTED'</pre>
+
+      <p style="margin-top: 16px;">
+        This prevents re-processing companies from previous gathering runs within the same project,
+        saving time and avoiding duplicate analysis.
+      </p>
+    </div>
+  </details>
+
+  <hr>
+
+  <!-- Approval Gates Section -->
+  <h2>Approval Gates: Operator Checkpoints</h2>
+  <p>
+    The pipeline pauses before any credit-spending operation. The operator reviews the scope,
+    estimated cost, and list of companies, then approves or rejects the gate.
+  </p>
+
+  <!-- Gate Types Table -->
+  <h3>Gate Types</h3>
+  <p>
+    Five types of gates protect different pipeline phases:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Gate Type</th>
+          <th>When it triggers</th>
+          <th>Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>pre_scrape_crona</code></td>
+          <td>Before batch scraping via Crona API</td>
+          <td>Crona credits</td>
+        </tr>
+        <tr>
+          <td><code>pre_analysis</code></td>
+          <td>Before AI analysis (GPT/Gemini batch)</td>
+          <td>LLM tokens</td>
+        </tr>
+        <tr>
+          <td><code>pre_enrichment</code></td>
+          <td>Before Apollo enrichment batch</td>
+          <td>1 credit/person</td>
+        </tr>
+        <tr>
+          <td><code>pre_verification</code></td>
+          <td>Before FindyMail email verification</td>
+          <td>FindyMail credits</td>
+        </tr>
+        <tr>
+          <td><code>pre_push</code></td>
+          <td>Before SmartLead/GetSales push</td>
+          <td>None (final review)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout--tip">
+    <svg class="callout__icon" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-4a1 1 0 11-2 0 1 1 0 012 0zM8 7a1 1 0 000 2h6a1 1 0 100-2H8zm0 4a1 1 0 100 2h3a1 1 0 100-2H8z" clip-rule="evenodd"/>
+    </svg>
+    <p>
+      <strong>Free scraping:</strong> httpx scraping is free — no gate needed.
+      Only credit-spending steps get gates.
+    </p>
+  </div>
+
+  <!-- Gate Lifecycle -->
+  <h3>Gate Lifecycle (8 Steps)</h3>
+  <ol>
+    <li><strong>Pipeline creates gate:</strong> <code>status = 'pending'</code>, <code>created_at = now()</code></li>
+    <li><strong>Database stores:</strong> Full scope (company IDs, estimated cost, credit usage)</li>
+    <li><strong>Operator sees alert:</strong> Dashboard shows pending gates, grouped by project and type</li>
+    <li><strong>Operator reviews details:</strong> Company names, estimated costs, reasoning</li>
+    <li><strong>Operator approves or rejects:</strong> <code>POST /api/approval-gates/{id}/approve</code> or <code>/reject</code></li>
+    <li><strong>Pipeline resumes:</strong> If approved, continue to the gated step. If rejected, mark companies as 'not_approved' and stop.</li>
+    <li><strong>Auto-expiry:</strong> If not decided after 48 hours, gate automatically expires (optional, per config)</li>
+    <li><strong>Audit trail:</strong> All decisions logged: <code>decided_by</code>, <code>decided_at</code>, <code>decision_note</code></li>
+  </ol>
+
+  <!-- Crash Safety -->
+  <h3>Crash Safety: No Lost Work</h3>
+  <p>
+    If the system crashes after a gate is approved but before the gated operation completes,
+    the pipeline automatically resumes. The gate record itself is immutable — only the
+    dependent work (enrichment, verification) retries.
+  </p>
+
+  <hr>
+
+  <!-- Full BLACKLIST → pre_enrichment Walkthrough -->
+  <h2>Full Example: BLACKLIST → pre_enrichment Gate</h2>
+  <p>
+    Here's a 10-step flow showing exactly what happens when an operator gathers 200 companies,
+    the system filters them, and creates an enrichment gate:
+  </p>
+
+  <ol style="padding-left: 24px; margin: 20px 0;">
+    <li>
+      <strong>Gathering completes:</strong> 200 unique domains discovered
+      (found by Apollo People, source_type = "apollo.people.emulator")
+    </li>
+    <li>
+      <strong>Blacklist check runs:</strong>
+      <ul style="margin-top: 8px;">
+        <li>45 domains rejected (same-project campaigns)</li>
+        <li>12 domains rejected (project blacklist)</li>
+        <li>8 domains rejected (enterprise blacklist)</li>
+        <li>89 domains returned as cross-project warnings (not rejected)</li>
+        <li><strong>Net approved: 135 domains</strong></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Scraping happens:</strong> 135 approved domains are scraped (free via httpx)
+    </li>
+    <li>
+      <strong>Scraping result:</strong> 128 sites fully scraped, 7 unreachable
+    </li>
+    <li>
+      <strong>Pre-filter runs:</strong> Deterministic checks (no AI)
+      <ul style="margin-top: 8px;">
+        <li>Removes 8 domains (offline industries, parked sites, junk domains)</li>
+        <li><strong>Net after pre-filter: 120 companies</strong></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Analysis phase:</strong> 120 companies sent to GPT-4o-mini for classification
+    </li>
+    <li>
+      <strong>Analysis complete:</strong> 45 marked as targets, 75 as non-targets
+    </li>
+    <li>
+      <strong>Pre-enrichment gate created:</strong>
+      <ul style="margin-top: 8px;">
+        <li>Scope: 45 target company IDs</li>
+        <li>Estimated cost: 45 Apollo credits (~$0.90)</li>
+        <li>Estimated people per company: 2.3 (avg)</li>
+        <li>Total estimated enrichment: ~103 people contacts</li>
+        <li>Label: "Approve 45 companies for Apollo enrichment (~$0.90)"</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Operator approves gate:</strong> <code>decision = approved, decided_by = "alice@company.com"</code>
+    </li>
+    <li>
+      <strong>Enrichment executes:</strong> Pipeline continues, calls
+      <code>enrich_apollo_batch(45 companies)</code>. 103 contact records created in
+      <code>extracted_contacts</code> table. Status progresses to next phase.
+    </li>
+  </ol>
+
+  <!-- Key Takeaway -->
+  <section class="takeaway">
+    <div class="takeaway__title">Key Takeaway</div>
+    <p>
+      <strong>Cross-project autonomy + project-scoped safeguards.</strong>
+      The blacklist system respects that different projects sell different products
+      to potentially different decision-makers at the same company. Warnings keep
+      operators informed; rejections prevent duplicate outreach. Approval gates ensure
+      operators stay in control of spending.
+    </p>
+  </section>
+
+  <!-- Lesson Navigation -->
+  <nav class="lesson-nav">
+    <a href="lesson-4.html" class="lesson-nav__link">
+      <span class="lesson-nav__label">Previous Lesson</span>
+      <span class="lesson-nav__title">Lesson 4: Analysis & Verification</span>
+    </a>
+    <a href="lesson-6.html" class="lesson-nav__link lesson-nav__link--next">
+      <span class="lesson-nav__label">Next Lesson</span>
+      <span class="lesson-nav__title">Lesson 6: Export & Integration</span>
+    </a>
+  </nav>
+
+  <!-- Complete Button -->
+  <div style="text-align: center; margin-top: 48px;">
+    <button class="btn btn--primary btn--lg" onclick="markLessonComplete(5)">
+      Mark Lesson 5 Complete
+    </button>
+  </div>
+
+</main>
+
+<!-- ============================================
+     FOOTER
+     ============================================ -->
+<footer class="site-footer">
+  <p>TAM Gathering Guide</p>
+  <p style="margin-top: 8px; font-size: 0.8125rem;">
+    Built with <span style="color: #DC2626;">♦</span> for data-driven TAM discovery
+  </p>
+</footer>
+
+<!-- ============================================
+     JAVASCRIPT
+     ============================================ -->
+<script>
+  function markLessonComplete(n) {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (!c.includes(n)) {
+      c.push(n);
+      localStorage.setItem('tam-guide-completed', JSON.stringify(c));
+    }
+    const btn = document.querySelector('.btn--primary');
+    if (btn) {
+      btn.textContent = '✓ Completed';
+      btn.disabled = true;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    let c = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+    if (c.includes(5)) {
+      const btn = document.querySelector('.btn--primary');
+      if (btn) {
+        btn.textContent = '✓ Completed';
+        btn.disabled = true;
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

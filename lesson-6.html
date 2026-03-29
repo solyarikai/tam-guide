@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Service Layer, API & Implementation Plan</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js"></script>
+  <style>
+    .table-wrap {
+      overflow-x: auto;
+      margin: 16px 0;
+      border-radius: 0.75rem;
+      border: 1px solid var(--color-neutral-200);
+    }
+    .guide-content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <a href="index.html" class="site-header__logo">
+      <span class="site-header__logo-icon">G</span>
+      <span>TAM Gathering Guide</span>
+    </a>
+    <nav class="site-header__nav">
+      <a href="index.html">All Lessons</a>
+      <a href="lesson-1.html">Lesson 1</a>
+      <a href="lesson-2.html">Lesson 2</a>
+      <a href="lesson-3.html">Lesson 3</a>
+      <a href="lesson-4.html">Lesson 4</a>
+      <a href="lesson-5.html">Lesson 5</a>
+      <a href="lesson-6.html" class="active">Lesson 6</a>
+      <a href="lesson-7.html">Lesson 7</a>
+    </nav>
+    <div class="lang-switch">
+      <a href="lesson-6.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+      <a href="lesson-6-ru.html" class="lang-switch__btn">RU</a>
+    </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="header-progress" style="width: 85%"></div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="main-content guide-content">
+    <!-- Lesson Hero -->
+    <div class="lesson-hero">
+      <div class="lesson-hero__number">
+        <span class="lesson-hero__badge">LESSON 6</span>
+      </div>
+      <h1>Service Layer, API & Implementation Plan</h1>
+      <p style="font-size: 1.125rem; color: var(--color-neutral-700); margin-top: 16px;">
+        Bring the gathering system to life: implement the orchestrator service, API endpoints, migrate existing data, and execute a phased build.
+      </p>
+    </div>
+
+    <!-- Scenario -->
+    <div class="scenario">
+      <div class="scenario__label">Scenario</div>
+      <p>You've just been assigned to build the TAM gathering system. You need to know: What orchestrates the pipeline? What API do frontend and MCP clients call? What files do I create, modify, or reuse? In what order do I build it? How do I import 25,000 existing company records without losing source attribution?</p>
+    </div>
+
+    <!-- Content Sections -->
+
+    <!-- ========== GatheringService ========== -->
+    <h2>GatheringService — The Orchestrator</h2>
+    <p>The <code>GatheringService</code> is a single Python class that orchestrates the entire gathering pipeline. It validates inputs, calls adapters, stores results, triggers downstream processing, and provides history endpoints.</p>
+
+    <h3>All Method Signatures</h3>
+    <details class="accordion">
+      <summary class="accordion__trigger">
+        <span>View all 16 method signatures</span>
+        <svg class="accordion__trigger-icon" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </summary>
+      <div class="accordion__content">
+        <pre><code>class GatheringService:
+    """Orchestrates the full TAM gathering pipeline."""
+
+    # ── GATHER ──
+    async def start_gathering(
+        self, project_id: int, source_type: str, filters: dict,
+        triggered_by: str = "operator", notes: str = None
+    ) -> GatheringRun:
+        """Create GatheringRun, validate filters, execute adapter, store results."""
+
+    # ── DEDUP ──
+    async def dedup_and_store(
+        self, gathering_run_id: int, companies: list[dict]
+    ) -> DedupeResult:
+        """Normalize domains, check existing DiscoveredCompanies, create/link."""
+
+    # ── BLACKLIST (deterministic, $0) ──
+    async def run_blacklist_check(
+        self, gathering_run_id: int
+    ) -> BlacklistResult:
+        """Check vs project_blacklist, enterprise_blacklist, CRM mat.view, existing DCs."""
+
+    # ── SCRAPE ──
+    async def scrape_companies(
+        self, gathering_run_id: int, pages: list[str] = ['/'],
+        method: str = 'httpx', force: bool = False
+    ) -> ScrapeResult:
+        """Scrape website content. Skip if current non-expired scrape exists (unless force=True)."""
+
+    # ── ANALYZE ──
+    async def start_analysis(
+        self, project_id: int, model: str, prompt_text: str,
+        scope_filter: dict, triggered_by: str = "operator"
+    ) -> AnalysisRun:
+        """Create analysis run, process companies, store results."""
+
+    async def compare_analysis_runs(
+        self, run_id_1: int, run_id_2: int
+    ) -> ComparisonResult:
+        """Compare two runs: agreements, disagreements, confidence deltas."""
+
+    # ── APPROVAL ──
+    async def create_gate(
+        self, project_id: int, gate_type: str, scope: dict, label: str
+    ) -> ApprovalGate:
+        """Create approval gate. Pipeline pauses until approved."""
+
+    async def approve_gate(self, gate_id: int, operator: str, note: str = None) -> None
+    async def reject_gate(self, gate_id: int, operator: str, note: str = None) -> None
+
+    # ── CONTINUE PIPELINE ──
+    async def continue_pipeline(
+        self, gathering_run_id: int, next_phase: str
+    ) -> PhaseResult:
+        """Resume pipeline from a specific phase."""
+
+    # ── HISTORY ──
+    async def get_runs(self, project_id: int, source_type: str = None) -> list[GatheringRun]
+    async def get_run_detail(self, run_id: int) -> GatheringRunDetail
+    async def get_run_companies(self, run_id: int, page: int = 1) -> PaginatedCompanies</code></pre>
+      </div>
+    </details>
+
+    <h3>How <code>start_gathering()</code> Works Internally</h3>
+    <p>When the API receives a <code>POST /api/pipeline/gathering/start</code> request, the service orchestrates these 9 steps:</p>
+    <ol>
+      <li><strong>Create GatheringRun record</strong> — Save project_id, source_type, filters, status='running', created_by, notes.</li>
+      <li><strong>Validate filters</strong> — Use the Pydantic schema for source_type to check filter structure and required fields.</li>
+      <li><strong>Load adapter</strong> — Look up adapter class from registry by source_type (e.g., "apollo.people.emulator" → ApolloOrgAPIAdapter).</li>
+      <li><strong>Execute adapter</strong> — Call adapter.execute(filters) → returns list of raw company dicts.</li>
+      <li><strong>Update raw_results_count</strong> — Set GatheringRun.raw_results_count = len(results).</li>
+      <li><strong>Deduplicate</strong> — Call dedup_and_store(run_id, results) → normalizes domains, checks/creates DiscoveredCompanies, creates CompanySourceLinks.</li>
+      <li><strong>Run blacklist check</strong> — Call run_blacklist_check(run_id) → marks rejected companies, creates gate if any found.</li>
+      <li><strong>Enqueue scraping</strong> — For accepted companies, queue scrape_companies(run_id) in background job queue (Celery/RQ).</li>
+      <li><strong>Return GatheringRun</strong> — Return created run with status='running' and job_id for frontend polling.</li>
+    </ol>
+
+    <!-- ========== API ENDPOINTS ========== -->
+    <h2>API Endpoints — All 16</h2>
+    <p>These endpoints form the complete public interface for the gathering pipeline:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/start</code></td>
+            <td>Start a new gathering run. Body: project_id, source_type, filters, triggered_by, notes. Returns: GatheringRun with status and job_id.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/runs</code></td>
+            <td>List all gathering runs for a project. Query: project_id, source_type (optional), status (optional), date_range (optional). Returns: paginated GatheringRun list with counters.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/runs/{id}</code></td>
+            <td>Get full run detail: metadata, statistics (raw_count, new_companies, duplicates, rejected, accepted), filter summary, phase timeline. Returns: GatheringRunDetail.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/runs/{id}/companies</code></td>
+            <td>Get paginated companies from a run. Query: page (default 1), limit (default 50). Returns: PaginatedCompanies with DiscoveredCompany + source link metadata.</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/continue/{id}</code></td>
+            <td>Resume pipeline from a specific phase. Body: next_phase (e.g., 'scrape', 'analyze'). Returns: PhaseResult with job_id and phase status.</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/estimate</code></td>
+            <td>Get cost estimate without executing. Body: source_type, filters. Returns: { estimated_cost_usd, estimated_duration_seconds, billable_entities }.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/sources</code></td>
+            <td>List all available source adapters with their filter JSON schemas. Returns: list of { source_type, description, schema, example_filters }.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/sources/{type}/schema</code></td>
+            <td>Get JSON schema for a specific source type. Returns: Pydantic schema as JSON Schema spec for frontend form generation.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/approval-gates</code></td>
+            <td>List pending approval gates (status='pending'). Query: project_id (optional), gate_type (optional). Returns: list of ApprovalGate with scope details.</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/approval-gates/{id}/approve</code></td>
+            <td>Approve a gate. Body: operator (user ID), note (optional). Updates gate.status='approved', resumes pipeline.</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/approval-gates/{id}/reject</code></td>
+            <td>Reject a gate. Body: operator (user ID), note (required). Updates gate.status='rejected', triggers cleanup/retry logic.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/scrapes/{company_id}</code></td>
+            <td>Get all scrapes for a company. Returns: list of CompanyScrape with versions, timestamps, pages, content summaries.</td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/pipeline/gathering/scrapes/refresh</code></td>
+            <td>Trigger re-scrape for expired content. Body: company_ids (list). Returns: job_id and estimated completion time.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/analysis-runs</code></td>
+            <td>List analysis runs. Query: project_id, status, date_range. Returns: paginated AnalysisRun list with result summary.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/analysis-runs/{id}</code></td>
+            <td>Get analysis run detail with result summary by confidence band (high/medium/low), model metadata.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/analysis-runs/{a}/compare/{b}</code></td>
+            <td>Compare two analysis runs. Returns: { agreements, disagreements (by confidence delta), new findings, dropped findings, metrics diff }.</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/pipeline/gathering/blacklist-check</code></td>
+            <td>Dry-run blacklist check on domains. Query: domains (comma-separated). Returns: { blacklisted: [...], reasons: {...}, sources: [...] }.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ========== FILES TO CREATE ========== -->
+    <h2>Files to Create — 15 Files</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>backend/app/models/gathering.py</code></td>
+            <td>SQLAlchemy ORM models: GatheringRun, CompanySourceLink, CompanyScrape, AnalysisRun, AnalysisResult, ApprovalGate. Includes columns for run metadata, phase tracking, counters, timings.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/schemas/gathering.py</code></td>
+            <td>Pydantic request/response models: StartGatheringRequest, GatheringRunResponse, DedupeResult, BlacklistResult, ScrapeResult, AnalysisRunResponse, ApprovalGateResponse, etc. Plus per-source filter schemas (ApolloPeopleFilters, ApolloCompaniesFilters, ClayFilters, CSVImportFilters, ManualFilters).</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_service.py</code></td>
+            <td>Main orchestrator class with all 16 methods. Coordinates adapter calls, dedup, blacklist, scraping, analysis, approval gates, and history queries.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/__init__.py</code></td>
+            <td>Adapter registry. Exports get_adapter(source_type) and list_adapters(). Loaded on app startup to auto-register all adapter classes.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/base.py</code></td>
+            <td>Abstract base class GatheringAdapter with validate_filters(filters) and async execute(filters) → list[dict]. All adapters inherit from this.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/apollo_people_ui.py</code></td>
+            <td>Wraps apollo_god_search.js. Executes Puppeteer script with filters, parses results, returns normalized company dicts with person/seniority data.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/apollo_companies_ui.py</code></td>
+            <td>Wraps apollo_companies_god.js. Executes Puppeteer script, returns companies with industry tags and employee ranges.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/apollo_org_api.py</code></td>
+            <td>Wraps apollo_service.search_organizations(). Direct API calls, no Puppeteer, fastest and cheapest. Returns normalized company dicts.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/clay_companies.py</code></td>
+            <td>Wraps clay_service.run_tam_export(). Calls Clay TAM export, polls for completion, returns companies with enrichment data.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/clay_people.py</code></td>
+            <td>Wraps clay_service.run_people_search(). Returns people records with company affiliations.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/csv_import.py</code></td>
+            <td>Parse CSV file (file_path in filters). Expects columns: domain, name, employees, linkedin_url (optional). Returns list of company dicts.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/gathering_adapters/manual.py</code></td>
+            <td>Accept direct list of domains or company objects from filters['companies']. No external calls. Quick validation and return.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/api/gathering.py</code></td>
+            <td>FastAPI router with all 16 endpoints. Imports GatheringService, schemas, dependency injection for auth/logging. Uses async/await throughout.</td>
+          </tr>
+          <tr>
+            <td><code>backend/alembic/versions/202603201_gathering_system.py</code></td>
+            <td>Alembic migration: create gathering_runs, company_source_links, company_scrapes, analysis_runs, analysis_results, approval_gates tables. Add columns to discovered_companies and search_jobs. Create CRM blacklist materialized view.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/migrate_existing_tam.py</code></td>
+            <td>One-time script to import 25K existing EasyStaff records. Creates GatheringRuns, DiscoveredCompanies, CompanySourceLinks, ExtractedContacts. See migration steps below for full detail.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ========== FILES TO MODIFY ========== -->
+    <h2>Files to Modify — 6 Files</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>backend/app/models/pipeline.py</code></td>
+            <td>Add columns to DiscoveredCompany: gathering_run_id (FK), first_source_date, last_source_date, source_count, highest_confidence_analysis_score. Indexes on gathering_run_id and source_count.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/models/domain.py</code></td>
+            <td>Add gathering_run_id column to SearchJob. Add index on (gathering_run_id, domain). Used for tracing scraping jobs back to source runs.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/models/__init__.py</code></td>
+            <td>Import new models from gathering.py: GatheringRun, CompanySourceLink, CompanyScrape, AnalysisRun, AnalysisResult, ApprovalGate. Makes them available to Alembic and app startup.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/scraper_service.py</code></td>
+            <td>Add scrape_to_db() method that writes scrape results to company_scrapes table (domain, url, content_hash, expires_at, page, run_id). Called by start_gathering pipeline after successful scrape.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/api/pipeline.py</code></td>
+            <td>Import and include gathering router: <code>app.include_router(gathering_router, prefix="/api/pipeline")</code>. Groups gathering endpoints under /api/pipeline/gathering.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/main.py</code></td>
+            <td>Register materialized view refresh in app startup. Schedule periodic (e.g., hourly) refresh of CRM blacklist materialized view via APScheduler or Celery beat. Log timing and row count.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ========== FILES TO REUSE ========== -->
+    <h2>Files to Reuse As-Is — 8 Files</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>What it provides</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>backend/app/services/apollo_service.py</code></td>
+            <td>Already has search_organizations(filters) and enrich_by_domain(domain). Wrapped by ApolloOrgAPIAdapter. No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/clay_service.py</code></td>
+            <td>Already has run_tam_export(filters) and run_people_search(filters). Wrapped by ClayCompaniesAdapter and ClayPeopleAdapter. No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/pipeline_service.py</code></td>
+            <td>Provides enrich_apollo_batch(), verify_emails_batch(), promote_to_crm(). These are downstream post-analysis phases, called AFTER gathering+analysis approvals. No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/domain_service.py</code></td>
+            <td>Provides normalize_domain(raw_domain) and matches_trash_pattern(domain). Used by dedup_and_store() for domain validation. No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/services/scraper_service.py</code></td>
+            <td>Provides scrape_website(domain, pages=['/']), scrape_batch(domains). Called by start_gathering to fetch content. Will add scrape_to_db() method (see Files to Modify).</td>
+          </tr>
+          <tr>
+            <td><code>easystaff-global/enterprise_blacklist.json</code></td>
+            <td>Pre-loaded blacklist of domains/patterns. Consulted by run_blacklist_check(). No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/apollo_god_search.js</code></td>
+            <td>Puppeteer script for Apollo People search. Called as subprocess by ApolloPeopleUIAdapter. No changes needed.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/apollo_companies_god.js</code></td>
+            <td>Puppeteer script for Apollo Companies search. Called as subprocess by ApolloCompaniesUIAdapter. No changes needed.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ========== MIGRATION ========== -->
+    <h2>Migrating Existing EasyStaff Data</h2>
+    <p>
+      We have ~25,000 companies and 12,000 people records already gathered. We must import them into the new system while maintaining source attribution and run metadata.
+    </p>
+
+    <h3>What Exists</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Records</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>data/dubai_agency_companies_full.json</code></td>
+            <td>295</td>
+            <td>apollo_people_ui, Strategy A (32 keywords)</td>
+          </tr>
+          <tr>
+            <td><code>data/uae_god_search_companies.json</code></td>
+            <td>5,602</td>
+            <td>apollo_people_ui, Strategy B (seniority + location)</td>
+          </tr>
+          <tr>
+            <td><code>data/uae_god_search_people.json</code></td>
+            <td>12,201</td>
+            <td>apollo_people_ui, Strategy B (people records)</td>
+          </tr>
+          <tr>
+            <td><code>data/uae_20k_companies.json</code></td>
+            <td>7,782</td>
+            <td>apollo_companies_ui (industry tags + keywords)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Migration Script: <code>scripts/migrate_existing_tam.py</code> — 5 Steps</h3>
+
+    <h4>Step 1: Create GatheringRuns for each historical search</h4>
+    <ul>
+      <li><strong>Run 1 (Strategy A, keyword search):</strong>
+        <ul>
+          <li>source_type: <code>apollo.people.emulator</code></li>
+          <li>source_subtype: <code>strategy_a</code></li>
+          <li>filters: <code>{ "person_locations": ["Dubai, UAE"], "q_organization_name": "32 keywords", "max_pages": 10 }</code></li>
+          <li>status: <code>completed</code></li>
+          <li>created_by: <code>migration_script</code></li>
+          <li>raw_results_count: 295 (set after dedup)</li>
+        </ul>
+      </li>
+      <li><strong>Run 2 (Strategy B, seniority + location):</strong>
+        <ul>
+          <li>source_type: <code>apollo.people.emulator</code></li>
+          <li>source_subtype: <code>strategy_b</code></li>
+          <li>filters: <code>{ "person_locations": ["Dubai, UAE", "Abu Dhabi, UAE", "Sharjah, UAE"], "person_seniorities": ["founder", "c_suite", "owner"], "organization_num_employees_ranges": ["1,10", "11,50", "51,200", "201,500", "501,1000", "1001,5000", "5001,10000", "10001,+" ], "max_pages": 10 }</code></li>
+          <li>status: <code>completed</code></li>
+          <li>raw_results_count: 5,602</li>
+        </ul>
+      </li>
+      <li><strong>Run 3 (Companies tab, industry + employee tags):</strong>
+        <ul>
+          <li>source_type: <code>apollo.companies.emulator</code></li>
+          <li>source_subtype: <code>industry_tags</code></li>
+          <li>filters: <code>{ "organization_locations": ["United Arab Emirates"], "organization_industry_tag_ids": [...], "organization_num_employees_ranges": [...], "max_pages": 100 }</code></li>
+          <li>status: <code>completed</code></li>
+          <li>raw_results_count: 7,782</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4>Step 2: Create/update DiscoveredCompanies for each unique domain</h4>
+    <ul>
+      <li>Read each company record from the JSON files.</li>
+      <li>Extract domain (or construct from company name if missing).</li>
+      <li>Call <code>domain_service.normalize_domain(raw_domain)</code> to standardize (lowercase, remove www, etc.).</li>
+      <li>Upsert DiscoveredCompany by (project_id, domain). If exists, update only empty fields (name, employees, linkedin_url) with richest source data.</li>
+      <li>Link to GatheringRun via gathering_run_id column.</li>
+      <li>Set first_source_date to migration timestamp, last_source_date = now, source_count = 1 (incremented when linked to multiple runs below).</li>
+    </ul>
+
+    <h4>Step 3: Create company_source_links for each (company, run) pair</h4>
+    <ul>
+      <li>For every company in the JSON files, create a CompanySourceLink record.</li>
+      <li>Fields: company_id (FK to DiscoveredCompany), gathering_run_id (FK to GatheringRun from Step 1), source_data (the raw JSON record), source_rank (position in original results list, 1-indexed).</li>
+      <li>This preserves full attribution: which company came from which run and at what rank.</li>
+      <li>When a company appears in multiple runs (e.g., both Strategy A and Strategy B), increment source_count in DiscoveredCompany.</li>
+    </ul>
+
+    <h4>Step 4: Import people as ExtractedContacts (from uae_god_search_people.json)</h4>
+    <ul>
+      <li>Parse the 12,201 people records from uae_god_search_people.json.</li>
+      <li>For each person, extract name, title, email, company, location.</li>
+      <li>Link to DiscoveredCompany by domain (extracted from company name or previous mapping).</li>
+      <li>Create ExtractedContact record with source=APOLLO, gathering_run_id=Run2 (Strategy B).</li>
+      <li>Store all raw fields in contact_data (JSON) for later enrichment or de-duping.</li>
+    </ul>
+
+    <h4>Step 5: Update GatheringRun counters</h4>
+    <ul>
+      <li>For each GatheringRun, compute and store counters:</li>
+      <li><code>raw_results_count</code> = count of records in JSON file.</li>
+      <li><code>new_companies_count</code> = count of DiscoveredCompanies created (not already in project).</li>
+      <li><code>duplicate_count</code> = raw_count - new_count (companies that already existed).</li>
+      <li><code>rejected_count</code> = count of records that failed blacklist or domain validation (if any).</li>
+      <li><code>accepted_count</code> = new + duplicates (all successfully stored).</li>
+    </ul>
+
+    <h3>Migration Order</h3>
+    <ol>
+      <li>Run migration for <strong>largest dataset first</strong> (uae_god_search = 5,602 companies). This establishes the base DiscoveredCompany set and avoids later merges.</li>
+      <li>Then migrate <strong>keyword search (295)</strong> — mostly duplicates of Strategy B, but creates source_links for attribution.</li>
+      <li>Then migrate <strong>companies tab (7,782)</strong> — many new (different discovery method), some overlapping. Updates DiscoveredCompany with richer employee/industry data.</li>
+      <li>Separately, import <strong>people records (12,201)</strong> — link to existing DiscoveredCompanies by domain.</li>
+    </ol>
+
+    <!-- ========== IMPLEMENTATION ORDER ========== -->
+    <h2>Implementation Order — Phases A–F</h2>
+    <p>Follow this phased approach to build and deploy the system incrementally, testing as you go.</p>
+
+    <h3>Phase A: Data Layer (1 day)</h3>
+    <ul>
+      <li><strong>Task A1:</strong> Create all SQLAlchemy models in <code>backend/app/models/gathering.py</code>. Define: GatheringRun, CompanySourceLink, CompanyScrape, AnalysisRun, AnalysisResult, ApprovalGate. Add all columns, relationships, and indexes. (2 hours)</li>
+      <li><strong>Task A2:</strong> Write Pydantic schemas in <code>backend/app/schemas/gathering.py</code>. Include per-source filter schemas (ApolloPeopleFilters, ApolloCompaniesFilters, ClayFilters, CSVImportFilters, ManualFilters) and all request/response models. (2 hours)</li>
+      <li><strong>Task A3:</strong> Create Alembic migration in <code>backend/alembic/versions/202603201_gathering_system.py</code>. Add all 6 new tables, foreign keys, indexes. Modify discovered_companies and search_jobs. Test locally. (1.5 hours)</li>
+      <li><strong>Task A4:</strong> Create materialized view for CRM blacklist in database. Add refresh function. Test query performance. (2 hours)</li>
+    </ul>
+
+    <h3>Phase B: Core Service + Apollo Adapter (2 days)</h3>
+    <ul>
+      <li><strong>Task B1:</strong> Create <code>backend/app/services/gathering_adapters/base.py</code> with GatheringAdapter ABC. Define validate_filters() and execute() signatures. (1 hour)</li>
+      <li><strong>Task B2:</strong> Create adapter registry in <code>backend/app/services/gathering_adapters/__init__.py</code>. Implement get_adapter(source_type) and list_adapters(). Auto-register all adapters on import. (1 hour)</li>
+      <li><strong>Task B3:</strong> Create <code>backend/app/services/gathering_adapters/apollo_org_api.py</code> — simplest adapter. Wraps apollo_service.search_organizations(). Test with sample filters. (3 hours)</li>
+      <li><strong>Task B4:</strong> Create GatheringService core methods: start_gathering(), dedup_and_store(), run_blacklist_check(). Implement all 9 internal steps. Unit test each. (8 hours)</li>
+      <li><strong>Task B5:</strong> Create <code>backend/app/api/gathering.py</code> with endpoints: /start, /runs, /runs/{id}, /runs/{id}/companies. Wire up to GatheringService. Test with curl/Postman. (4 hours)</li>
+    </ul>
+
+    <h3>Phase C: Scraping + Analysis (1–2 days)</h3>
+    <ul>
+      <li><strong>Task C1:</strong> Add scrape_to_db() method to <code>backend/app/services/scraper_service.py</code>. Write CompanyScrape records to DB. Test schema and content hashing. (2 hours)</li>
+      <li><strong>Task C2:</strong> Implement scrape_companies() method in GatheringService. Handle TTL checks, force refresh, per-page scraping. Enqueue background jobs. (3 hours)</li>
+      <li><strong>Task C3:</strong> Implement start_analysis() and compare_analysis_runs() methods. Extract AI logic from company_search_service. Store results in analysis_runs/analysis_results tables. (4 hours)</li>
+      <li><strong>Task C4:</strong> Create endpoints: /analysis-runs, /analysis-runs/{id}, /analysis-runs/{a}/compare/{b}. Test with sample data. (2 hours)</li>
+    </ul>
+
+    <h3>Phase D: Migration + Remaining Adapters (1–2 days)</h3>
+    <ul>
+      <li><strong>Task D1:</strong> Write migration script <code>scripts/migrate_existing_tam.py</code>. Implement all 5 steps (GatheringRuns, DiscoveredCompanies, source_links, ExtractedContacts, counters). Test on sample data first. Dry-run with actual JSON files. (5 hours)</li>
+      <li><strong>Task D2:</strong> Create remaining adapters: ApolloPeopleUIAdapter, ApolloCompaniesUIAdapter (wrap JS Puppeteer scripts), ClayCompaniesAdapter, ClayPeopleAdapter, CSVImportAdapter, ManualAdapter. Test each independently. (6 hours)</li>
+      <li><strong>Task D3:</strong> Run full migration on actual EasyStaff data. Validate record counts, checksums, source attribution. Fix any data issues. (2 hours)</li>
+    </ul>
+
+    <h3>Phase E: Approval Gates + Remaining API (1 day)</h3>
+    <ul>
+      <li><strong>Task E1:</strong> Implement create_gate(), approve_gate(), reject_gate() methods in GatheringService. Create endpoints: /approval-gates, /approval-gates/{id}/approve, /approval-gates/{id}/reject. (3 hours)</li>
+      <li><strong>Task E2:</strong> Implement remaining endpoints: /sources, /sources/{type}/schema, /scrapes/{company_id}, /scrapes/refresh, /blacklist-check, /estimate. (3 hours)</li>
+      <li><strong>Task E3:</strong> End-to-end testing: start run → dedup → blacklist gate → approve → scrape → analyze → compare. Verify all phases work together. (2 hours)</li>
+    </ul>
+
+    <h3>Phase F: MCP Prep (1 day)</h3>
+    <ul>
+      <li><strong>Task F1:</strong> Export all adapter filter schemas as JSON Schema for frontend form generation. Create /api/pipeline/gathering/sources endpoint to serve schemas. (2 hours)</li>
+      <li><strong>Task F2:</strong> Prepare MCP tool definitions for Claude integration. Document all 16 endpoints, request/response formats, example calls. (2 hours)</li>
+    </ul>
+
+    <h3>Total Implementation Timeline</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Duration</th>
+            <th>Tasks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A</td>
+            <td>1 day</td>
+            <td>Data layer (models, schemas, migration, materialized view)</td>
+          </tr>
+          <tr>
+            <td>B</td>
+            <td>2 days</td>
+            <td>Core service + Apollo adapter + API (start, list, detail)</td>
+          </tr>
+          <tr>
+            <td>C</td>
+            <td>1–2 days</td>
+            <td>Scraping + analysis (scrape_to_db, start_analysis, compare)</td>
+          </tr>
+          <tr>
+            <td>D</td>
+            <td>1–2 days</td>
+            <td>Migration script + remaining adapters (Clay, CSV, Manual, UI)</td>
+          </tr>
+          <tr>
+            <td>E</td>
+            <td>1 day</td>
+            <td>Approval gates + remaining endpoints + end-to-end testing</td>
+          </tr>
+          <tr>
+            <td>F</td>
+            <td>1 day</td>
+            <td>MCP prep (schema export, tool definitions)</td>
+          </tr>
+          <tr style="border-top: 2px solid var(--color-neutral-200); font-weight: 600;">
+            <td><strong>Total</strong></td>
+            <td><strong>7–9 days</strong></td>
+            <td><strong>~40 hours engineering + testing</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ========== KEY TAKEAWAY ========== -->
+    <div class="takeaway">
+      <div class="takeaway__title">Key Takeaway</div>
+      <p>
+        <strong>GatheringService is the single orchestrator</strong> for the entire pipeline. It calls adapters to fetch data, stores results in a normalized schema with full source attribution, runs deterministic filters (blacklist, domain validation), triggers scraping and analysis, manages approval gates, and serves history/detail endpoints. The 16 API endpoints expose all these capabilities to the frontend and MCP clients. By building in phases (data → core → scraping → migration → gates), you keep each layer testable and independent. The migration script brings in 25K historical records without data loss or broken lineage.
+      </p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="lesson-nav">
+      <a href="lesson-5.html" class="lesson-nav__link">
+        <span class="lesson-nav__label">Previous Lesson</span>
+        <span class="lesson-nav__title">Lesson 5</span>
+      </a>
+      <a href="lesson-7.html" class="lesson-nav__link lesson-nav__link--next">
+        <span class="lesson-nav__label">Next Lesson</span>
+        <span class="lesson-nav__title">Lesson 7</span>
+      </a>
+    </div>
+
+    <!-- Complete Button -->
+    <div style="text-align: center; margin-top: 48px;">
+      <button class="btn btn--primary btn--lg" onclick="markLessonComplete(6)">
+        Mark Lesson 6 Complete
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>TAM Gathering Guide — Learn how to build and deploy a scalable company research system.</p>
+    <p style="margin-top: 16px; font-size: 0.8125rem;">
+      <a href="index.html">Home</a> |
+      <a href="#">Documentation</a> |
+      <a href="#">Contact</a>
+    </p>
+  </footer>
+
+  <script>
+    // Update progress bar
+    const progressBar = document.querySelector('.header-progress');
+    if (progressBar) {
+      progressBar.style.width = '85%';
+    }
+
+    // Mark lesson complete
+    function markLessonComplete(lessonNumber) {
+      const completed = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+      if (!completed.includes(lessonNumber)) {
+        completed.push(lessonNumber);
+      }
+      localStorage.setItem('tam-guide-completed', JSON.stringify(completed));
+      alert('Lesson 6 marked as complete!');
+      // Optionally redirect or update UI
+    }
+
+    // Check if lesson is already marked complete on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const completed = JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+      if (completed.includes(6)) {
+        const btn = document.querySelector('button.btn--primary');
+        if (btn) {
+          btn.textContent = 'Lesson 6 Complete ✓';
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

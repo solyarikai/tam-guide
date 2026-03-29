@@ -1,0 +1,3434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Архитектура сбора TAM — Справочная вики</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="wiki.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a href="index-ru.html" class="site-header__logo">
+      <span class="site-header__logo-icon">T</span>
+      TAM Guide
+    </a>
+    <nav class="site-header__nav">
+      <a href="index-ru.html">Путь обучения</a>
+      <a href="wiki-ru.html" class="active">Справочная вики</a>
+    </nav>
+    <div class="lang-switch">
+      <a href="wiki.html" class="lang-switch__btn">EN</a>
+      <a href="wiki-ru.html" class="lang-switch__btn lang-switch__btn--active">RU</a>
+    </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Переключить тему">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </header>
+
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar" id="wikiSidebar">
+      <div class="wiki-search">
+        <div class="wiki-search__wrap">
+          <svg class="wiki-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="wiki-search__input" id="wikiSearch" placeholder="Поиск...">
+        </div>
+      </div>
+      <nav class="wiki-nav" id="wikiNav">
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="getting-started">Начало работы</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#overview" class="wiki-nav__link" data-section-id="overview">Обзор системы</a></li>
+            <li><a href="#key-concepts" class="wiki-nav__link" data-section-id="key-concepts">Ключевые концепции</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="pipeline">Пайплайн</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#pipeline-flow" class="wiki-nav__link" data-section-id="pipeline-flow">Поток пайплайна</a></li>
+            <li><a href="#phase-details" class="wiki-nav__link" data-section-id="phase-details">Детали фаз</a></li>
+            <li><a href="#phase-meanings" class="wiki-nav__link" data-section-id="phase-meanings">Значения New/Duplicate/Rejected</a></li>
+            <li><a href="#checkpoints" class="wiki-nav__link" data-section-id="checkpoints">Поведение чекпойнтов</a></li>
+            <li><a href="#crash-recovery" class="wiki-nav__link" data-section-id="crash-recovery">Восстановление после сбоя</a></li>
+            <li><a href="#scrape-failures" class="wiki-nav__link" data-section-id="scrape-failures">Отчёт об ошибках скрапинга</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="project-context">Контекст проекта</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#project-context" class="wiki-nav__link" data-section-id="project-context">Контекст проекта (поля БД)</a></li>
+            <li><a href="#operator-modes" class="wiki-nav__link" data-section-id="operator-modes">Режимы ввода оператора</a></li>
+            <li><a href="#segment-tracking" class="wiki-nav__link" data-section-id="segment-tracking">Связь Run ↔ Сегмент</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="database">Схема базы данных</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#gathering-runs" class="wiki-nav__link" data-section-id="gathering-runs">gathering_runs</a></li>
+            <li><a href="#company-source-links" class="wiki-nav__link" data-section-id="company-source-links">company_source_links</a></li>
+            <li><a href="#company-scrapes" class="wiki-nav__link" data-section-id="company-scrapes">company_scrapes</a></li>
+            <li><a href="#gathering-prompts" class="wiki-nav__link" data-section-id="gathering-prompts">gathering_prompts</a></li>
+            <li><a href="#analysis-tables" class="wiki-nav__link" data-section-id="analysis-tables">analysis_runs + analysis_results</a></li>
+            <li><a href="#approval-gates" class="wiki-nav__link" data-section-id="approval-gates">approval_gates</a></li>
+            <li><a href="#extensions" class="wiki-nav__link" data-section-id="extensions">Расширения таблиц</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="blacklist">Блэклист и Gates</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#blacklist-design" class="wiki-nav__link" data-section-id="blacklist-design">Project-Scoped блэклист</a></li>
+            <li><a href="#blacklist-layers" class="wiki-nav__link" data-section-id="blacklist-layers">Слои проверки</a></li>
+            <li><a href="#materialized-view" class="wiki-nav__link" data-section-id="materialized-view">Materialized View</a></li>
+            <li><a href="#blacklist-edge-cases" class="wiki-nav__link" data-section-id="blacklist-edge-cases">Граничные случаи</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="adapter">Система адаптеров</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#adapter-pattern" class="wiki-nav__link" data-section-id="adapter-pattern">MCP Adapter Pattern</a></li>
+            <li><a href="#adapter-registry" class="wiki-nav__link" data-section-id="adapter-registry">Реестр и добавление источников</a></li>
+            <li><a href="#adapter-catalog" class="wiki-nav__link" data-section-id="adapter-catalog">Каталог адаптеров</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="service">Сервис и API</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#gathering-service" class="wiki-nav__link" data-section-id="gathering-service">GatheringService</a></li>
+            <li><a href="#api-endpoints" class="wiki-nav__link" data-section-id="api-endpoints">API Endpoints (все 16)</a></li>
+            <li><a href="#files-overview" class="wiki-nav__link" data-section-id="files-overview">Файлы проекта</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="implementation">Реализация</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#migration" class="wiki-nav__link" data-section-id="migration">Миграция данных</a></li>
+            <li><a href="#implementation-order" class="wiki-nav__link" data-section-id="implementation-order">Порядок реализации (фазы A-F)</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="edge-cases">Граничные случаи</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#edge-cases" class="wiki-nav__link" data-section-id="edge-cases">8 критических кейсов</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="example">Реальный пример</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#easystaff" class="wiki-nav__link" data-section-id="easystaff">EasyStaff Global (11 шагов)</a></li>
+            <li><a href="#prompt-loop" class="wiki-nav__link" data-section-id="prompt-loop">Цикл итераций промптов</a></li>
+            <li><a href="#key-learnings" class="wiki-nav__link" data-section-id="key-learnings">Ключевые выводы</a></li>
+          </ul>
+        </div>
+
+        <div class="wiki-nav__section">
+          <h4 class="wiki-nav__heading" data-section="code-reference">Код (Reference)</h4>
+          <ul class="wiki-nav__list">
+            <li><a href="#code-overview" class="wiki-nav__link" data-section-id="code-overview">Обзор скрипта</a></li>
+            <li><a href="#code-config" class="wiki-nav__link" data-section-id="code-config">ProjectConfig</a></li>
+            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Сбор (шаги 0–8)</a></li>
+            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">Экспорт и импорт (9–10)</a></li>
+            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (шаг 11)</a></li>
+            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead (шаг 12)</a></li>
+            <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
+            <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Режимы ввода</a></li>
+            <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Утилиты и хелперы</a></li>
+            <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Обновление блэклиста после CP2</a></li>
+            <li><a href="#code-batching" class="wiki-nav__link" data-section-id="code-batching">Батчинг и авто-pipeline</a></li>
+            <li><a href="#code-cli" class="wiki-nav__link" data-section-id="code-cli">CLI-справочник</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="wiki-content guide-content">
+
+<!-- GETTING STARTED -->
+    <section id="overview" class="wiki-section">
+        <h2>Обзор системы</h2>
+        <p>Переиспользуемая система, которая запоминает <strong>всё</strong> о сборе TAM:</p>
+        <ul>
+            <li>Какие фильтры были применены в каком источнике (Apollo, Clay, Sales Navigator и т.д.)</li>
+            <li>Какие компании были найдены из каких фильтров</li>
+            <li>Содержимое сайтов (несколько страниц, версионировано с TTL)</li>
+            <li>Запуски AI анализа (несколько моделей, несколько промптов, всё сохранено)</li>
+            <li>Проверки блэклиста против CRM/кампаний</li>
+            <li>Approval gates перед этапами, требующими кредитов</li>
+        </ul>
+        <p><strong>MCP-готовая</strong>: Каждый источник — подключаемый модуль адаптера. Сегодня это эмуляторы Puppeteer; завтра пользователи подключат свои ключи Apollo/Clay API. Слой БД остаётся неизменным.</p>
+        <p><strong>Переиспользуемая</strong> по проектам: EasyStaff Global, OnSocial, Inxy, любой будущий проект — те же таблицы, тот же пайплайн.</p>
+        <p><strong>Запускается только на Hetzner</strong>: Все скрипты, скраперы, миграции, запросы к БД выполняются на production сервере (46.62.210.24). Локальные машины используются только для редактирования кода. Claude Code подключается по SSH на Hetzner для всех операций.</p>
+    </section>
+
+    <section id="key-concepts" class="wiki-section">
+        <h2>Ключевые концепции</h2>
+        <p>Система строится на нескольких фундаментальных идеях:</p>
+        <ul>
+            <li><strong>Source-agnostic DB</strong>: БД хранит непрозрачный JSONB. Она не знает про Apollo, Clay или любую другую платформу.</li>
+            <li><strong>Filter memory</strong>: Каждый поиск сохраняется с точными параметрами. Переиспользуемо. Перезапускаемо.</li>
+            <li><strong>Multi-source dedup</strong>: Одна компания, найденная 5 источниками = 1 DiscoveredCompany + 5 source_links.</li>
+            <li><strong>Cheapest first</strong>: Бесплатная проверка паттернов → бесплатный блэклист → дешёвый скрапинг → дорогой AI → очень дорогое обогащение.</li>
+            <li><strong>Full provenance</strong>: gathering_run → DiscoveredCompany → ExtractedContact → CRM Contact → Meeting → Deal</li>
+        </ul>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="pipeline-flow" class="wiki-section">
+        <h2>Поток пайплайна — строго линейный, без пропусков</h2>
+        <div class="pipeline-flow">
+  <span class="pipeline-flow__step">GATHER + DEDUP</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step">BLACKLIST</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP1 — STOP</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step">PRE-FILTER</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step">SCRAPE</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step">ANALYZE</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP2 — STOP</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step pipeline-flow__step--expensive">VERIFY</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step pipeline-flow__step--checkpoint">★ CP3 — STOP</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step">GOD_SEQ</span>
+  <span class="pipeline-flow__arrow">→</span>
+  <span class="pipeline-flow__step pipeline-flow__step--expensive">PUSH</span>
+</div>
+        <p>CP1 — это настоящее подтверждение проекта. Оно показывает кампании и контакты проекта, так что оператор подтверждает, что находится в правильном проекте И что область блэклиста правильная. Это не может быть пропущено — это approval_gate в базе данных.</p>
+        <p><strong>Конечный автомат фазы</strong> (<code>gathering_run.current_phase</code>):</p>
+        <div class="wiki-state-flow">
+  <span class="wiki-state-flow__state">gathered</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_scope_ok</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">scope_approved</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">filtered</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">scraped</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">analyzed</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_targets_ok</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">targets_approved</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state wiki-state-flow__state--waiting">awaiting_verify_ok</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state">verify_approved</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state wiki-state-flow__state--final">verified</span>
+  <span class="wiki-state-flow__arrow">→</span>
+  <span class="wiki-state-flow__state wiki-state-flow__state--final">pushed</span>
+</div>
+        <p>На фазах <code>awaiting_*</code> run физически заблокирован. Запись <code>approval_gate</code> существует в БД. Единственный способ вперёд — <code>POST /approval-gates/{gate_id}/approve</code>. Ни один путь кода это не пропускает. Это пережидает крахи, перезагрузки сессий, перезапуски сервера — состояние в базе данных.</p>
+    </section>
+
+    <section id="phase-details" class="wiki-section">
+        <h2>Детали фаз</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Фаза</th>
+                    <th>Стоимость</th>
+                    <th>Авто?</th>
+                    <th>Что она делает</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>GATHER</strong></td>
+                    <td>varies</td>
+                    <td>авто</td>
+                    <td>Выполнить адаптер, получить сырой список компаний из источника</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>DEDUP</strong></td>
+                    <td>$0</td>
+                    <td>авто</td>
+                    <td>Нормализовать домены, сопоставить с существующими DiscoveredCompanies, создать source_links. "Уже известно" = существует в discovered_companies для ЭТОГО проекта из предыдущего запуска сбора. ЕЩЁ НЕ в блэклисте — это дальше.</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>BLACKLIST</strong></td>
+                    <td>$0</td>
+                    <td>авто</td>
+                    <td>Project-scoped проверка CRM + project_blacklist + enterprise_blacklist</td>
+                </tr>
+                <tr>
+                    <td>—</td>
+                    <td><strong>★ CHECKPOINT 1</strong></td>
+                    <td>—</td>
+                    <td><strong>СТОП</strong></td>
+                    <td><strong>Подтверждение проекта + проверка блэклиста.</strong> Показывает: имя/ID проекта, всего контактов, ВСЕ активные кампании (имя, платформа, лиды), разбор отклонений по кампании, enterprise blacklist, cross-project предупреждения. Оператор подтверждает: "Да, это мой проект, и область правильная." <strong>Принудительно кодом — не может быть пропущено.</strong> Если неправильный проект → отменить run. Если неправильная кампания → исправить campaign_filters.</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>PRE-FILTER</strong></td>
+                    <td>$0</td>
+                    <td>авто</td>
+                    <td>Детерминированное отклонение: offline индустрии (ресторан, отель, строительство), мусор домены (.gov, .edu), мусор паттерны. БЕЗ AI. Отклоняет 40-60%.</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>RESOLVE</strong></td>
+                    <td>$0-низко</td>
+                    <td>авто</td>
+                    <td>Для компаний без домена: LinkedIn URL → домен. Имя компании → Google поиск. Пропустить если домен уже известен.</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>SCRAPE</strong></td>
+                    <td>$0 (httpx)</td>
+                    <td>авто</td>
+                    <td>Получить содержимое сайта. Проверка TTL — пропустить если свежо. Несколько страниц. <strong>Дешёво — одобрение не требуется.</strong></td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>ANALYZE</strong></td>
+                    <td>~$0.01-0.05</td>
+                    <td>авто</td>
+                    <td>AI анализ (GPT-4o-mini). Оценки: industry_match, size_match, service_model. <strong>Дешёво — одобрение не требуется.</strong></td>
+                </tr>
+                <tr>
+                    <td>—</td>
+                    <td><strong>★ CHECKPOINT 2</strong></td>
+                    <td>—</td>
+                    <td><strong>СТОП</strong></td>
+                    <td><strong>Оператор проверяет список целей.</strong> Должен видеть: каждую компанию, отмеченную как целевая, её confidence оценку, рассуждение, сегмент. Оператор может принять, отклонить отдельные компании, переопределить вердикты. Только после подтверждения оператором пайплайн продолжается. Здесь оператор гарантирует, что AI не галлюцинирует. <strong>Никакие кредиты не тратятся до одобрения.</strong></td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>VERIFY</strong></td>
+                    <td>$$$</td>
+                    <td><strong>BLOCKED</strong></td>
+                    <td>FindyMail email верификация. <strong>Это дорогой этап.</strong> Запускается только для одобренных оператором целей.</td>
+                </tr>
+                <tr>
+                    <td>—</td>
+                    <td><strong>★ CHECKPOINT 3</strong></td>
+                    <td>—</td>
+                    <td><strong>СТОП</strong></td>
+                    <td><strong>Оператор одобряет FindyMail расходы.</strong> Должен видеть: сколько email проверить, предполагаемая стоимость, какие компании. Оператор может удалить компании перед верификацией.</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>GOD_SEQUENCE</strong></td>
+                    <td>~$0.08</td>
+                    <td>авто</td>
+                    <td>Создать 5-шаговую последовательность из 3-уровневого знания: универсальные паттерны + деловое знание (та же sender_company) + project ICP. Оператор проверяет черновик перед пушем. <code>POST /generate-sequence/</code> → <code>POST /approve/</code></td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>PUSH</strong></td>
+                    <td>$0</td>
+                    <td><strong>BLOCKED</strong></td>
+                    <td><code>POST /generated/{id}/push/</code> создаёт SmartLead кампанию (DRAFT) с GOD_SEQUENCE выводом. Оператор добавляет лиды + активирует.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="phase-meanings" class="wiki-section">
+        <h2>Значения "new" и "duplicate" на каждой фазе</h2>
+        <p>Это критично. Слова меняют смысл в зависимости от того, где вы находитесь:</p>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>После фазы</th>
+                    <th>"New" означает</th>
+                    <th>"Duplicate" означает</th>
+                    <th>"Rejected" означает</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>GATHER+DEDUP</strong></td>
+                    <td>Домен не в discovered_companies для ЭТОГО проекта из любого предыдущего запуска сбора</td>
+                    <td>Домен уже известен из предыдущего запуска сбора (получает новый source_link, не новую запись)</td>
+                    <td>Ничего ещё — никакая фильтрация не применена</td>
+                </tr>
+                <tr>
+                    <td><strong>BLACKLIST</strong></td>
+                    <td>Прошёл все проверки блэклиста</td>
+                    <td>N/A</td>
+                    <td>В ЭТОМ проекте активные кампании, ИЛИ в project blacklist, ИЛИ в enterprise blacklist. <strong>НЕ в других проектах — это предупреждение, не отклонение.</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>PRE-FILTER</strong></td>
+                    <td>Прошёл проверку паттернов</td>
+                    <td>N/A</td>
+                    <td>Offline индустрия, мусор домен, мусор паттерн</td>
+                </tr>
+                <tr>
+                    <td><strong>ANALYZE</strong></td>
+                    <td>AI говорит is_target=true</td>
+                    <td>N/A</td>
+                    <td>AI говорит не целевая для этого ICP</td>
+                </tr>
+                <tr>
+                    <td><strong>CHECKPOINT 2</strong></td>
+                    <td>Оператор подтвердил как целевую</td>
+                    <td>N/A</td>
+                    <td>Оператор отклонил / переопределил</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="checkpoints" class="wiki-section">
+        <h2>Поведение чекпойнтов</h2>
+        <h3>CHECKPOINT 1 (после блэклиста):</h3>
+        <pre>Показать оператору:
+- "Проверено 1,800 компаний против кампаний [Имя Проекта]"
+- "ВАШИ КАМПАНИИ ПРОЕКТА, которые вызвали отклонения:"
+- Campaign: "EasyStaff - Dubai Agencies v3" → 45 доменов, 120 контактов
+- Campaign: "EasyStaff - UAE IT Companies" → 12 доменов, 38 контактов
+- "Enterprise blacklist: 28 доменов (конкуренты)"
+- "Project blacklist: 3 домена (вручную запрещены)"
+- "ПРОШЛИ: 1,712 компаний готовы к следующей фазе"
+- Если cross_project=true: "ПРЕДУПРЕЖДЕНИЕ: 89 доменов также в проекте Inxy (не отклонены)"
+
+Спросить: "Область проекта выглядит правильно? Продолжить с pre-filter?"
+НЕ ПРОДОЛЖАТЬ, пока оператор не скажет да.</pre>
+
+        <h3>CHECKPOINT 2 (после анализа):</h3>
+        <pre>Показать оператору:
+- "Проанализировано 542 компании с [имя промпта]"
+- "ЦЕЛИ: 180 компаний (33% целевой процент, средняя confidence 0.72)"
+- Топ 10 целей с доменом, имя, confidence, сегмент, рассуждение
+- "ОТКЛОНЕНЫ: 362 компании (не соответствуют ICP)"
+- Нижние 5 отклонений (пограничные) с рассуждением
+
+Спросить: "Проверьте список целей. Удалите любые ложные срабатывания, затем подтвердите для продолжения на FindyMail верификацию."
+НЕ ПРОДОЛЖАТЬ, пока оператор не подтвердит список целей.</pre>
+
+        <h3>CHECKPOINT 3 (перед FindyMail):</h3>
+        <pre>Показать оператору:
+- "Готово проверить email для 180 целевых компаний"
+- "Предполагаемая стоимость FindyMail: ~$X.XX (X email × $0.01)"
+- "Разбор: 450 контактов найдено, 380 с email для проверки"
+
+Спросить: "Одобрить FindyMail расход ~$X.XX?"
+НЕ ВЫЗЫВАТЬ FindyMail, пока оператор не скажет да.</pre>
+    </section>
+
+    <section id="crash-recovery" class="wiki-section">
+        <h2>Восстановление после сбоя сессии</h2>
+        <p>Все состояния чекпойнтов сохранены в БД (gathering_run.current_phase + таблица approval_gates).</p>
+        <p><strong>Что происходит, если сессия Claude Code падает на чекпойнте 1:</strong></p>
+        <ol>
+            <li>Следующая сессия: Claude Code читает CLAUDE.md, которая говорит "сначала проверить текущие запуски"</li>
+            <li>Запросы: <code>GET /runs?project_id=X</code> → находит run с <code>current_phase=awaiting_scope_ok</code></li>
+            <li>Запросы: <code>GET /approval-gates?project_id=X</code> → находит pending gate с <code>gate_type=scope_verification</code></li>
+            <li>Читает <code>gate.scope</code>, которая содержит ПОЛНЫЕ детали блэклиста (rejected_domains, warning_domains, разбор кампаний)</li>
+            <li>Показывает те же результаты чекпойнта 1 оператору</li>
+            <li>Оператор одобряет → пайплайн продолжается</li>
+        </ol>
+        <p><strong>Никакие данные не теряются.</strong> JSON <code>scope</code> хранит всё необходимое для восстановления отображения чекпойнта.</p>
+    </section>
+
+    <section id="scrape-failures" class="wiki-section">
+        <h2>Отчёт об ошибках скрапинга</h2>
+        <p>Когда анализ запускается, компании без скрепленного текста ПРОПУСКАЮТСЯ (не анализируются). Ответ анализа включает:</p>
+        <ul>
+            <li><code>total_eligible</code>: сколько компаний могли быть проанализированы</li>
+            <li><code>skipped_no_scraped_text</code>: сколько пропущено, потому что скрапинг не удался</li>
+            <li><code>total_analyzed</code>: сколько фактически проанализировано</li>
+        </ul>
+        <p>Claude Code ДОЛЖЕН сообщить это на чекпойнте 2: "Проанализировано 300 из 500 eligible компаний. 200 пропущено (скрапинг не удался — нет текста сайта)."</p>
+    </section>
+
+    <!-- PROJECT CONTEXT -->
+    <section id="project-context" class="wiki-section">
+        <h2>Контекст проекта</h2>
+        <p>Система сбора работает не в вакууме. Она читает существующее знание проекта для умных решений.</p>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Источник</th>
+                    <th>Таблица/Поле</th>
+                    <th>Как сбор это использует</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>ICP Definition</strong></td>
+                    <td><code>projects.target_segments</code>, <code>projects.target_industries</code></td>
+                    <td>→ AI отображает на source-specific фильтры. "Агентства <50 сотр в UAE" становится Apollo location + seniority + size фильтры</td>
+                </tr>
+                <tr>
+                    <td><strong>Segments</strong></td>
+                    <td><code>kb_segments</code> (гибкий data JSON на сегмент)</td>
+                    <td>→ Каждый сегмент может иметь свою конфигурацию сбора. Сегмент "Dubai Agencies" → apollo.companies.emulator с UAE фильтры. Сегмент "AU-PH Corridor" → clay.people.emulator с филиппинскими языковыми фильтрами</td>
+                </tr>
+                <tr>
+                    <td><strong>Products</strong></td>
+                    <td><code>kb_products</code> (что мы продаём)</td>
+                    <td>→ AI анализ промпт: "Нужна ли этой компании {product}?"</td>
+                </tr>
+                <tr>
+                    <td><strong>Competitors</strong></td>
+                    <td><code>kb_competitors</code> (домены, сильные, слабые)</td>
+                    <td>→ Auto-blacklist домены конкурентов. Не собирать компании, уже использующие конкурента</td>
+                </tr>
+                <tr>
+                    <td><strong>Case Studies</strong></td>
+                    <td><code>kb_case_studies</code> (индустрия клиента, размер, вызов, решение)</td>
+                    <td>→ Lookalike поиск: "Найти компании похожие на этих клиентов"</td>
+                </tr>
+                <tr>
+                    <td><strong>Company Profile</strong></td>
+                    <td><code>kb_company_profile</code> (кто МЫ)</td>
+                    <td>→ AI анализ контекст: "Мы {company}, мы предлагаем {products}"</td>
+                </tr>
+                <tr>
+                    <td><strong>Project Knowledge</strong></td>
+                    <td><code>project_knowledge</code> (category=icp/outreach/contacts/gtm)</td>
+                    <td>→ Богатый ICP контекст, правила outreach, GTM стратегия</td>
+                </tr>
+                <tr>
+                    <td><strong>Existing Contacts</strong></td>
+                    <td><code>contacts</code> + <code>campaigns</code> (CRM)</td>
+                    <td>→ Blacklist: не re-target компании уже в outreach</td>
+                </tr>
+                <tr>
+                    <td><strong>Enterprise Blacklist</strong></td>
+                    <td><code>project_blacklist</code> + <code>enterprise_blacklist.json</code></td>
+                    <td>→ Жёсткое исключение перед любой обработкой</td>
+                </tr>
+                <tr>
+                    <td><strong>Past Gathering Runs</strong></td>
+                    <td><code>gathering_runs</code> (эта система)</td>
+                    <td>→ "Не повторять фильтры, которые дали <5% целевой процент"</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="operator-modes" class="wiki-section">
+        <h2>Режимы ввода оператора</h2>
+        <p>Когда оператор (или MCP агент) запускает сбор, они могут предоставить ввод несколькими способами:</p>
+
+        <h3>Mode 1: Natural Language (самый простой, MCP-оптимизированный)</h3>
+        <pre>"Find 5000 digital agencies in UAE with <100 employees"</pre>
+        <p>→ AI отображает на фильтры, используя project's ICP + segment контекст<br>
+        → Предлагает лучший источник (Apollo для широкого, Clay для конкретного)<br>
+        → Возвращает предполагаемые результаты + стоимость</p>
+
+        <h3>Mode 2: Structured Filters (опытные операторы, точные)</h3>
+        <pre>{
+"source_type": "apollo.people.emulator",
+"filters": {
+"person_locations": ["Dubai, United Arab Emirates"],
+"person_seniorities": ["founder", "c_suite"],
+"organization_num_employees_ranges": ["1,10", "11,50", "51,100"]
+}
+}</pre>
+        <p>→ Пропускает AI отображение, прямое выполнение</p>
+
+        <h3>Mode 3: Lookalike (из case studies или существующих клиентов)</h3>
+        <pre>"Find companies similar to: frizzon.ae, 10xbrand.com, zopreneurs.com"</pre>
+        <p>→ Reverse-engineer паттерны (индустрия, размер, местоположение, tech stack)<br>
+        → Создать фильтры, которые соответствуют паттерну<br>
+        → Уже частично существует: <code>reverse_engineering_service.py</code></p>
+
+        <h3>Mode 4: Expand/Repeat (итерирование предыдущих запусков)</h3>
+        <pre>"Run the same search as gathering_run #42 but for Singapore instead of Dubai"</pre>
+        <p>→ Копировать фильтры, модифицировать локацию<br>
+        → Проверка dedup фильтров (hash check) предотвращает случайные дубликаты</p>
+    </section>
+
+    <section id="segment-tracking" class="wiki-section">
+        <h2>Связь Gathering Run ↔ Segment</h2>
+        <p>Каждый запуск сбора МОЖЕТ быть связан с конкретным сегментом:</p>
+        <div class="callout callout--info" style="padding: 12px 16px;">
+  <code style="font-family: var(--font-mono); font-size: 0.8125rem;">gathering_runs.segment_id &nbsp;FK(kb_segments) NULL</code>
+</div>
+        <p>Это позволяет системе:</p>
+        <ul>
+            <li>Отслеживать какие сегменты были собраны (и какие нет)</li>
+            <li>Вычислять TAM на уровне сегмента: "Dubai Agencies сегмент: 5,150 компаний найдено, 1,200 проанализировано, 340 целей, 89 обогащено"</li>
+            <li>Предлагать недо-собранные сегменты: "AU-PH Corridor имеет 0 запусков сбора — рассмотрите начало"</li>
+        </ul>
+    </section>
+
+    <!-- DATABASE SCHEMA -->
+    <section id="gathering-runs" class="wiki-section">
+        <h2>Таблица: gathering_runs</h2>
+        <p>Каждое выполнение поиска = одна запись. Запоминает ТОЧНО, какие фильтры были применены.</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> gathering_runs
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">project_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(projects)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(companies)</span> <span class="constraint">NOT NULL</span> — tenant scope</span>
+    </div>
+    <div class="wiki-schema__group">Source Identification</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_type</span>
+      <span class="wiki-schema__col-type">VARCHAR(100) <span class="constraint">NOT NULL</span> — free string</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_label</span>
+      <span class="wiki-schema__col-type">VARCHAR(255) — human-readable</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_subtype</span>
+      <span class="wiki-schema__col-type">VARCHAR(100) — strategy</span>
+    </div>
+    <div class="wiki-schema__group">Filter Memory</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">filters</span>
+      <span class="wiki-schema__col-type">JSONB <span class="constraint">NOT NULL</span> — source-specific schema</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">filter_hash</span>
+      <span class="wiki-schema__col-type">VARCHAR(64) <span class="constraint">NOT NULL</span> — SHA256 dedup</span>
+    </div>
+    <div class="wiki-schema__group">Execution State</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">status</span>
+      <span class="wiki-schema__col-type">VARCHAR(30) <span class="default-val">DEFAULT 'pending'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">started_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">completed_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">duration_seconds</span>
+      <span class="wiki-schema__col-type">INTEGER</span>
+    </div>
+    <div class="wiki-schema__group">Results Summary</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">raw_results_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">new_companies_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">duplicate_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">rejected_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">error_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__group">Cost</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">credits_used</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">total_cost_usd</span>
+      <span class="wiki-schema__col-type">NUMERIC(10,4) <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__group">Context</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">segment_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(kb_segments)</span> NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">pipeline_run_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(pipeline_runs)</span> NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">triggered_by</span>
+      <span class="wiki-schema__col-type">VARCHAR(100)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">input_mode</span>
+      <span class="wiki-schema__col-type">VARCHAR(30) <span class="default-val">DEFAULT 'structured'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">input_text</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">notes</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">error_message</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__group">Raw Output</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">raw_output_ref</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">raw_output_sample</span>
+      <span class="wiki-schema__col-type">JSONB</span>
+    </div>
+    <div class="wiki-schema__group">Timestamps</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">updated_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>ix_gr_project_source (project_id, source_type, status)</code><br>
+    <code>ix_gr_filter_hash (project_id, filter_hash)</code><br>
+    <code>ix_gr_pipeline (pipeline_run_id)</code><br>
+    <code>ix_gr_created (project_id, created_at DESC)</code></div>
+</div>
+    </section>
+
+    <section id="company-source-links" class="wiki-section">
+        <h2>Таблица: company_source_links</h2>
+        <p>Решает: "Acme.com был найден Apollo keyword поиском, Apollo seniority поиском, И Clay TAM экспортом."</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> company_source_links
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">discovered_company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(discovered_companies, CASCADE)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">gathering_run_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(gathering_runs, CASCADE)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_rank</span>
+      <span class="wiki-schema__col-type">INTEGER — position in source results</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_data</span>
+      <span class="wiki-schema__col-type">JSONB — raw record from this source</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">source_confidence</span>
+      <span class="wiki-schema__col-type">FLOAT — relevance score</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">found_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>UNIQUE (discovered_company_id, gathering_run_id)</code><br>
+    <code>INDEX (gathering_run_id)</code><br>
+    <code>INDEX (discovered_company_id)</code></div>
+</div>
+
+        <p><strong>Как dedup работает:</strong></p>
+        <ol>
+            <li>GatheringRun #1 находит домен <code>acme.com</code> → создаёт DiscoveredCompany + company_source_link(run=1)</li>
+            <li>GatheringRun #2 находит <code>acme.com</code> снова → находит существующий DC по домену → только создаёт новый link(run=2)</li>
+            <li><code>SELECT COUNT(DISTINCT gathering_run_id) FROM company_source_links WHERE discovered_company_id = X</code> = "найден 2 источниками"</li>
+            <li><code>source_data</code> сохраняет что каждый источник сказал об этой компании (разные employee counts, индустрии и т.д.)</li>
+        </ol>
+    </section>
+
+    <section id="company-scrapes" class="wiki-section">
+        <h2>Таблица: company_scrapes</h2>
+        <p>Несколько страниц на компанию. Версионировано. TTL-based re-scraping.</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> company_scrapes
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">discovered_company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(discovered_companies, CASCADE)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">url</span>
+      <span class="wiki-schema__col-type">TEXT <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">page_path</span>
+      <span class="wiki-schema__col-type">VARCHAR(255) <span class="default-val">DEFAULT '/'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">raw_html</span>
+      <span class="wiki-schema__col-type">TEXT — raw HTML (100KB max)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">clean_text</span>
+      <span class="wiki-schema__col-type">TEXT — extracted readable text</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">metadata</span>
+      <span class="wiki-schema__col-type">JSONB — {title, description, language, word_count}</span>
+    </div>
+    <div class="wiki-schema__group">Versioning & TTL</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scraped_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">ttl_days</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 180</span> — 6 months</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">expires_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ — computed</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">is_current</span>
+      <span class="wiki-schema__col-type">BOOLEAN <span class="default-val">DEFAULT true</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">version</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 1</span></span>
+    </div>
+    <div class="wiki-schema__group">Scraping</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scrape_method</span>
+      <span class="wiki-schema__col-type">VARCHAR(50) <span class="default-val">DEFAULT 'httpx'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scrape_status</span>
+      <span class="wiki-schema__col-type">VARCHAR(30) <span class="default-val">DEFAULT 'success'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">error_message</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">http_status_code</span>
+      <span class="wiki-schema__col-type">INTEGER</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">html_size_bytes</span>
+      <span class="wiki-schema__col-type">INTEGER</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">text_size_bytes</span>
+      <span class="wiki-schema__col-type">INTEGER</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>(discovered_company_id, page_path, is_current)</code><br>
+    <code>(discovered_company_id) WHERE is_current = true</code><br>
+    <code>(expires_at) WHERE is_current = true</code><br>
+    <code>(scrape_status)</code></div>
+</div>
+
+        <p><strong>TTL re-scrape:</strong> Scheduled job запрашивает <code>WHERE is_current = true AND expires_at < now()</code>. Когда re-scraped:</p>
+        <ol>
+            <li>Старая запись: <code>is_current = false</code></li>
+            <li>Новая запись: <code>is_current = true, version = old.version + 1</code></li>
+            <li>Все исторические скрапы сохранены — можно сравнить изменения сайта во времени</li>
+        </ol>
+        <p><strong>Backward compat:</strong> Новый код пишет в <code>company_scrapes</code>. Также копирует последнюю homepage (<code>page_path='/'</code>) в <code>discovered_companies.scraped_html/scraped_text/scraped_at</code> для существующих кодовых путей.</p>
+    </section>
+
+    <section id="gathering-prompts" class="wiki-section">
+        <h2>Таблица: gathering_prompts</h2>
+        <p>Один и тот же промпт переиспользуется на многих запусках анализа. Deduplicated по SHA256 hash. Отслеживает эффективность на промпт.</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> gathering_prompts
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(companies)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">project_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(projects)</span> NULL — global if NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">name</span>
+      <span class="wiki-schema__col-type">VARCHAR(255) <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">prompt_text</span>
+      <span class="wiki-schema__col-type">TEXT <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">prompt_hash</span>
+      <span class="wiki-schema__col-type">VARCHAR(64) <span class="constraint">NOT NULL UNIQUE</span> — SHA256</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">category</span>
+      <span class="wiki-schema__col-type">VARCHAR(50) <span class="default-val">DEFAULT 'icp_analysis'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">model_default</span>
+      <span class="wiki-schema__col-type">VARCHAR(100) <span class="default-val">DEFAULT 'gpt-4o-mini'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">version</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 1</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">parent_prompt_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(gathering_prompts)</span> NULL — version chain</span>
+    </div>
+    <div class="wiki-schema__group">Effectiveness Tracking</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">usage_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">avg_target_rate</span>
+      <span class="wiki-schema__col-type">FLOAT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">avg_confidence</span>
+      <span class="wiki-schema__col-type">FLOAT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">total_companies_analyzed</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__group">Meta</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_by</span>
+      <span class="wiki-schema__col-type">VARCHAR(100)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">is_active</span>
+      <span class="wiki-schema__col-type">BOOLEAN <span class="default-val">DEFAULT true</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">updated_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>(company_id, project_id)</code><br>
+    <code>(company_id, category)</code></div>
+</div>
+
+        <p><strong>Жизненный цикл промпта:</strong></p>
+        <ol>
+            <li>Оператор пишет промпт → <code>get_or_create_prompt()</code> создаёт запись (или находит существующую по hash)</li>
+            <li>Запуск анализа связывает с промптом через <code>prompt_id</code> FK</li>
+            <li>После завершения запуска → <code>update_prompt_stats()</code> пересчитывает эффективность</li>
+            <li>Dashboard: "Какой промпт имеет лучший целевой процент?" → сортировать по avg_target_rate</li>
+        </ol>
+        <p><strong>Итерация версий:</strong> Когда улучшается промпт, установить <code>parent_prompt_id</code> на старую версию. Обе остаются usable; система отслеживает какая версия работает лучше.</p>
+    </section>
+
+    <section id="analysis-tables" class="wiki-section">
+        <h2>Таблицы: analysis_runs + analysis_results</h2>
+        <p>Несколько проходов анализа с разными моделями/промптами. Сравнивайте результаты. Сохраняйте всё.</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> analysis_runs
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">project_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(projects)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(companies)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">prompt_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(gathering_prompts)</span> NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">model</span>
+      <span class="wiki-schema__col-type">VARCHAR(100) <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">prompt_hash</span>
+      <span class="wiki-schema__col-type">VARCHAR(64) <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">prompt_text</span>
+      <span class="wiki-schema__col-type">TEXT NULL</span>
+    </div>
+    <div class="wiki-schema__group">Scope & Status</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scope_type</span>
+      <span class="wiki-schema__col-type">VARCHAR(50) <span class="default-val">DEFAULT 'batch'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scope_filter</span>
+      <span class="wiki-schema__col-type">JSONB</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">status</span>
+      <span class="wiki-schema__col-type">VARCHAR(30) <span class="default-val">DEFAULT 'pending'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">started_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">completed_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__group">Results</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">total_analyzed</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">targets_found</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">rejected_count</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">avg_confidence</span>
+      <span class="wiki-schema__col-type">FLOAT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">total_cost_usd</span>
+      <span class="wiki-schema__col-type">NUMERIC(10,4) <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">total_tokens</span>
+      <span class="wiki-schema__col-type">INTEGER <span class="default-val">DEFAULT 0</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">triggered_by</span>
+      <span class="wiki-schema__col-type">VARCHAR(100)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">error_message</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>(project_id, status)</code> &middot;
+    <code>(project_id, model)</code> &middot;
+    <code>(project_id, prompt_hash)</code></div>
+</div>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> analysis_results
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">analysis_run_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(analysis_runs, CASCADE)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">discovered_company_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(discovered_companies, CASCADE)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__group">Verdict</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">is_target</span>
+      <span class="wiki-schema__col-type">BOOLEAN <span class="default-val">DEFAULT false</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">confidence</span>
+      <span class="wiki-schema__col-type">FLOAT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">segment</span>
+      <span class="wiki-schema__col-type">VARCHAR(100)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">reasoning</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scores</span>
+      <span class="wiki-schema__col-type">JSONB</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">raw_output</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__group">Operator Override</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">override_verdict</span>
+      <span class="wiki-schema__col-type">BOOLEAN</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">override_reason</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">overridden_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__group">Cost</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">tokens_used</span>
+      <span class="wiki-schema__col-type">INTEGER</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">cost_usd</span>
+      <span class="wiki-schema__col-type">NUMERIC(10,6)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>UNIQUE (analysis_run_id, discovered_company_id)</code><br>
+    <code>(discovered_company_id)</code> &middot;
+    <code>(analysis_run_id, is_target)</code></div>
+</div>
+
+        <p><strong>Сравнение двух запусков анализа:</strong></p>
+        <pre>SELECT dc.domain, dc.name,
+a1.is_target AS run1, a1.confidence AS conf1, a1.reasoning AS why1,
+a2.is_target AS run2, a2.confidence AS conf2, a2.reasoning AS why2
+FROM discovered_companies dc
+JOIN analysis_results a1 ON a1.discovered_company_id = dc.id AND a1.analysis_run_id = :run1
+JOIN analysis_results a2 ON a2.discovered_company_id = dc.id AND a2.analysis_run_id = :run2
+WHERE a1.is_target != a2.is_target  -- disagreements only
+ORDER BY ABS(a1.confidence - a2.confidence) DESC;</pre>
+    </section>
+
+    <section id="approval-gates" class="wiki-section">
+        <h2>Таблица: approval_gates</h2>
+        <p>Пайплайн паузируется перед шагами, требующими кредитов. Оператор проверяет область + предполагаемую стоимость, затем одобрит/отклонит.</p>
+        <div class="wiki-schema">
+  <div class="wiki-schema__header">
+    <span class="wiki-schema__header-icon">&#x1F4CB;</span> approval_gates
+  </div>
+  <div class="wiki-schema__body">
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">id</span>
+      <span class="wiki-schema__col-type">SERIAL PK</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">project_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(projects)</span> <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">pipeline_run_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(pipeline_runs)</span> NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">gathering_run_id</span>
+      <span class="wiki-schema__col-type"><span class="fk">FK(gathering_runs)</span> NULL</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">gate_type</span>
+      <span class="wiki-schema__col-type">VARCHAR(50) <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">gate_label</span>
+      <span class="wiki-schema__col-type">VARCHAR(255) <span class="constraint">NOT NULL</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">scope</span>
+      <span class="wiki-schema__col-type">JSONB <span class="constraint">NOT NULL</span> — {count, cost, details}</span>
+    </div>
+    <div class="wiki-schema__group">Decision</div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">status</span>
+      <span class="wiki-schema__col-type">VARCHAR(30) <span class="default-val">DEFAULT 'pending'</span></span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">decided_by</span>
+      <span class="wiki-schema__col-type">VARCHAR(100)</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">decided_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">decision_note</span>
+      <span class="wiki-schema__col-type">TEXT</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">expires_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ</span>
+    </div>
+    <div class="wiki-schema__row">
+      <span class="wiki-schema__col-name">created_at</span>
+      <span class="wiki-schema__col-type">TIMESTAMPTZ <span class="default-val">DEFAULT now()</span></span>
+    </div>
+  </div>
+<div class="wiki-schema__indexes">
+    <code>(project_id, status)</code><br>
+    <code>(status) WHERE status = 'pending'</code></div>
+</div>
+
+        <p><strong>Когда gates создаются:</strong></p>
+        <ul>
+            <li><code>pre_scrape_crona</code>: Crona стоит кредиты — gate перед batch скрапингом через Crona</li>
+            <li><code>pre_analysis</code>: AI анализ стоит токены — gate перед GPT/Gemini batch анализом</li>
+            <li><code>pre_enrichment</code>: Apollo enrich стоит 1 кредит/person — gate перед enrich_apollo_batch</li>
+            <li><code>pre_verification</code>: FindyMail стоит кредиты — gate перед verify_emails_batch</li>
+            <li><code>pre_push</code>: Финальная проверка перед SmartLead/GetSales пушем</li>
+        </ul>
+        <p><strong>httpx скрапинг бесплатен</strong> — gate не требуется. Только шаги, требующие кредитов, получают gates.</p>
+    </section>
+
+    <section id="extensions" class="wiki-section">
+        <h2>Расширения существующих таблиц</h2>
+        <h3>discovered_companies — New Columns</h3>
+        <pre># Multi-source tracking
+source_count             = Column(Integer, default=1)          # how many gathering_runs found this
+first_found_by           = Column(Integer, ForeignKey('gathering_runs.id'))
+
+# CRM blacklist cache
+blacklist_checked_at     = Column(DateTime(timezone=True))
+in_active_campaign       = Column(Boolean, default=False)
+campaign_ids_active      = Column(JSONB)                       # [campaign_id_1, ...]
+crm_contact_id           = Column(Integer, ForeignKey('contacts.id'))  # if already in CRM
+
+# Latest analysis reference
+latest_analysis_run_id   = Column(Integer, ForeignKey('analysis_runs.id'))
+latest_analysis_verdict  = Column(Boolean)                     # cached is_target from latest run
+latest_analysis_segment  = Column(String(100))                 # cached segment</pre>
+
+        <h3>search_jobs — New Column</h3>
+        <div class="callout callout--info" style="padding: 12px 16px;">
+  <code style="font-family: var(--font-mono); font-size: 0.8125rem;">gathering_run_id = Column(Integer, ForeignKey('gathering_runs.id'))</code>
+</div>
+    </section>
+
+    <!-- BLACKLIST & GATES -->
+    <section id="blacklist-design" class="wiki-section">
+        <h2>Блэклист — Project-Scoped Fast Lookup</h2>
+        <h3>Критическое решение по дизайну: Project-Scoped Blacklisting</h3>
+        <p><strong>Проблема:</strong> Компания X получает outreach от EasyStaff RU (проект 40, payroll оффер). Inxy (проект 10, crypto payments) начинает собирать и находит Company X. Должна ли она быть заблокирована?</p>
+        <p><strong>Ответ: НЕТ.</strong> Разные проекты продают разные продукты разным ICPs. Company X может легитимно получить outreach от обоих проектов — это разные value propositions. Auto-blocking через проекты искусственно сокращает TAM.</p>
+        <p><strong>Правило:</strong> Только кампании принадлежащие ОДНОМУ проекту вызывают auto-rejection. Кампании других проектов показываются как предупреждения (никогда не auto-rejected).</p>
+    </section>
+
+    <section id="blacklist-layers" class="wiki-section">
+        <h2>Слои проверки Blacklist (по порядку)</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Слой</th>
+                    <th>Область</th>
+                    <th>Действие</th>
+                    <th>Что это ловит</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Project blacklist</strong></td>
+                    <td>Per-project</td>
+                    <td>Auto-reject</td>
+                    <td><code>project_blacklist</code> таблица — вручную запрещённые оператором</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>Same-project campaigns</strong></td>
+                    <td>Per-project</td>
+                    <td>Auto-reject</td>
+                    <td>Контакты с доменами в ЭТИХ активных кампаниях проекта</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>Enterprise blacklist</strong></td>
+                    <td>Global</td>
+                    <td>Auto-reject</td>
+                    <td><code>enterprise_blacklist.json</code> — конкуренты, запрещённые организации</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Cross-project campaigns</strong></td>
+                    <td>All projects</td>
+                    <td><strong>Warning only</strong></td>
+                    <td>Домены в кампаниях ДРУГИХ проектов (информационно)</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="materialized-view" class="wiki-section">
+        <h2>Materialized View (Project-Scoped)</h2>
+        <pre>CREATE MATERIALIZED VIEW active_campaign_domains AS
+SELECT DISTINCT
+lower(c.domain) AS domain,
+c.project_id,
+p.name AS project_name,
+array_agg(DISTINCT camp.id) AS campaign_ids,
+array_agg(DISTINCT camp.name) AS campaign_names,
+count(DISTINCT c.id) AS contact_count
+FROM contacts c
+JOIN projects p ON p.id = c.project_id
+JOIN campaigns camp ON camp.project_id = c.project_id AND camp.status = 'active'
+WHERE c.domain IS NOT NULL AND c.domain != ''
+GROUP BY lower(c.domain), c.project_id, p.name;
+
+CREATE UNIQUE INDEX ON active_campaign_domains(domain, project_id);
+CREATE INDEX ON active_campaign_domains(project_id);</pre>
+
+        <p><strong>Same-project check:</strong> <code>WHERE domain = ANY(:domains) AND project_id = :pid</code><br>
+        <strong>Cross-project check:</strong> <code>WHERE domain = ANY(:domains) AND project_id != :pid</code></p>
+        <p><strong>Refresh:</strong> После синхронизации кампании в <code>crm_scheduler.py</code> + после любого campaign push. <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> (no locks).</p>
+    </section>
+
+    <section id="blacklist-edge-cases" class="wiki-section">
+        <h2>Граничные случаи</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Сценарий</th>
+                    <th>Поведение</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Домен в кампаниях проекта A, собираем для проекта B</td>
+                    <td><strong>Предупреждение</strong> (не отклонено) — разная value prop</td>
+                </tr>
+                <tr>
+                    <td>Домен в кампаниях проекта A, собираем для проекта A</td>
+                    <td><strong>Отклонено</strong> — уже в outreach</td>
+                </tr>
+                <tr>
+                    <td>Домен в enterprise blacklist</td>
+                    <td><strong>Отклонено</strong> независимо от проекта</td>
+                </tr>
+                <tr>
+                    <td>Домен в project blacklist для проекта A, собираем для проекта B</td>
+                    <td><strong>Не отклонено</strong> — blacklist per-project</td>
+                </tr>
+                <tr>
+                    <td>Кампания неправильно назначена проекту</td>
+                    <td>Оператор видит имена кампаний в детали → может исправить отображение</td>
+                </tr>
+                <tr>
+                    <td>Контакт с NULL project_id</td>
+                    <td>Игнорировано — не назначенные контакты не вызывают блэклист</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Также проверить: DiscoveredCompanies Уже проанализированные</h3>
+        <pre>-- Companies already in the system for THIS project (not globally)
+SELECT DISTINCT domain FROM discovered_companies
+WHERE domain = ANY(:domains) AND project_id = :pid AND status != 'REJECTED'</pre>
+
+        <p>Это предотвращает re-processing компаний из предыдущих запусков сбора в одном проекте.</p>
+    </section>
+
+    <!-- ADAPTERS -->
+    <section id="adapter-pattern" class="wiki-section">
+        <h2>MCP Adapter Pattern</h2>
+        <h3>Базовый класс</h3>
+        <pre>class GatheringAdapter(ABC):
+"""Base class for all gathering source adapters.
+
+The system is source-agnostic. The DB stores opaque JSONB filters.
+Each adapter owns its filter schema and execution logic.
+Adding a new source = write adapter + register. Zero DB changes.
+"""
+
+source_type: str                              # "apollo.companies.emulator"
+filter_model: Optional[Type[BaseModel]]       # Pydantic model (optional — can be None for fully dynamic)
+
+@abstractmethod
+async def validate(self, raw_filters: dict) -> dict:
+"""Validate & normalize filters. Returns cleaned dict. Raises on invalid.
+If filter_model is set, validates via Pydantic. Otherwise, passes through."""
+
+@abstractmethod
+async def estimate(self, filters: dict) -> EstimateResult:
+"""Estimate cost/results without executing."""
+
+@abstractmethod
+async def execute(self, filters: dict, on_progress: Callable = None) -> GatheringResult:
+"""Execute gathering. Returns companies list + metadata."""
+
+def get_filter_schema(self) -> Optional[dict]:
+"""JSON Schema for MCP tool registration. None if fully dynamic."""
+if self.filter_model:
+    return self.filter_model.model_json_schema()
+return None
+
+def get_capabilities(self) -> dict:
+"""What this adapter can do. Used by UI and MCP for discovery."""
+return {
+    "source_type": self.source_type,
+    "has_estimate": True,       # can estimate before executing
+    "has_filter_schema": self.filter_model is not None,
+    "cost_model": "free",       # free | per_result | per_page | per_credit
+    "requires_auth": False,     # needs API key in integration_settings
+}</pre>
+    </section>
+
+    <section id="adapter-registry" class="wiki-section">
+        <h2>Реестр адаптеров — Open for Extension</h2>
+        <pre># Global registry — adapters self-register on import
+ADAPTER_REGISTRY: dict[str, Type[GatheringAdapter]] = {}
+
+def register_adapter(cls: Type[GatheringAdapter]) -> Type[GatheringAdapter]:
+"""Decorator. @register_adapter on adapter class auto-registers it."""
+ADAPTER_REGISTRY[cls.source_type] = cls
+return cls
+
+def get_adapter(source_type: str) -> GatheringAdapter:
+cls = ADAPTER_REGISTRY.get(source_type)
+if not cls:
+raise ValueError(f"Unknown source: {source_type}. Available: {sorted(ADAPTER_REGISTRY.keys())}")
+return cls()
+
+def list_adapters() -> list[dict]:
+"""Returns all registered adapters + capabilities. Used by /gathering/sources endpoint."""
+return [get_adapter(st).get_capabilities() for st in sorted(ADAPTER_REGISTRY.keys())]</pre>
+
+        <h3>Пример: Добавление нового источника (Zero DB Changes)</h3>
+        <pre># backend/app/services/gathering_adapters/indeed_jobs.py
+
+@register_adapter
+class IndeedJobsAdapter(GatheringAdapter):
+source_type = "indeed.jobs.api"
+filter_model = IndeedJobsFilters  # Pydantic model with Indeed-specific fields
+
+async def validate(self, raw_filters):
+return IndeedJobsFilters(**raw_filters).model_dump()
+
+async def estimate(self, filters):
+# Call Indeed API with dry_run flag
+return EstimateResult(estimated_companies=500, estimated_credits=0, cost_usd=0)
+
+async def execute(self, filters, on_progress=None):
+# Call Indeed API, normalize results to standard company dict
+...</pre>
+
+        <p>Вот и всё. Система обнаруживает его через реестр. UI показывает в выпадающем меню источника. MCP выражает как инструмент.</p>
+    </section>
+
+    <section id="adapter-catalog" class="wiki-section">
+        <h2>Каталог адаптеров</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Адаптер</th>
+                    <th>source_type</th>
+                    <th>Ключевые фильтры</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Apollo People UI</strong></td>
+                    <td><code>apollo.people.emulator</code></td>
+                    <td>person_locations[], person_seniorities[], organization_num_employees_ranges[], q_organization_name, organization_industry_tag_ids[], person_titles[], exclude_keywords[], strategy, max_pages</td>
+                </tr>
+                <tr>
+                    <td><strong>Apollo Companies UI</strong></td>
+                    <td><code>apollo.companies.emulator</code></td>
+                    <td>organization_locations[], organization_industry_tag_ids[], q_keywords, organization_num_employees_ranges[], sort_by_field, max_pages</td>
+                </tr>
+                <tr>
+                    <td><strong>Apollo Org API</strong></td>
+                    <td><code>apollo.companies.api</code></td>
+                    <td>q_organization_keyword_tags[], organization_locations[], organization_num_employees_ranges[], max_pages, per_page</td>
+                </tr>
+                <tr>
+                    <td><strong>Apollo People API</strong></td>
+                    <td><code>apollo.people.api</code></td>
+                    <td>domains[], person_titles[], limit_per_domain, reveal_personal_emails</td>
+                </tr>
+                <tr>
+                    <td><strong>Clay Companies UI</strong></td>
+                    <td><code>clay.companies.emulator</code></td>
+                    <td>industries[], industries_exclude[], sizes[], types[], country_names[], country_names_exclude[], annual_revenues[], description_keywords[], description_keywords_exclude[], minimum/maximum_member_count, icp_text</td>
+                </tr>
+                <tr>
+                    <td><strong>Clay Companies API</strong></td>
+                    <td><code>clay.companies.api</code></td>
+                    <td>Same fields as UI, direct API call instead of Puppeteer</td>
+                </tr>
+                <tr>
+                    <td><strong>Clay People UI</strong></td>
+                    <td><code>clay.people.emulator</code></td>
+                    <td>domains[], use_titles, job_title, name, countries[], cities[], schools[], languages[]</td>
+                </tr>
+                <tr>
+                    <td><strong>Clay People API</strong></td>
+                    <td><code>clay.people.api</code></td>
+                    <td>Same fields as UI, direct API call</td>
+                </tr>
+                <tr>
+                    <td><strong>Sales Navigator</strong></td>
+                    <td><code>sales_navigator.companies.emulator</code></td>
+                    <td>search_url, company_headcount[], geography[], industry[], annual_revenue[], seniority_level[], function[]</td>
+                </tr>
+                <tr>
+                    <td><strong>Google Maps</strong></td>
+                    <td><code>google_maps.companies.api</code></td>
+                    <td>query, location, radius_km, type, min_rating</td>
+                </tr>
+                <tr>
+                    <td><strong>Crunchbase</strong></td>
+                    <td><code>crunchbase.companies.api</code></td>
+                    <td>categories[], locations[], funding_rounds[], employee_count, founded_after</td>
+                </tr>
+                <tr>
+                    <td><strong>Google Sheets</strong></td>
+                    <td><code>google_sheets.companies.manual</code></td>
+                    <td>sheet_url, gid, column_mapping (auto-detected from headers), skip_rows</td>
+                </tr>
+                <tr>
+                    <td><strong>CSV Import</strong></td>
+                    <td><code>csv.companies.manual</code></td>
+                    <td>file_name, file_url, column_mapping, row_count</td>
+                </tr>
+                <tr>
+                    <td><strong>Manual</strong></td>
+                    <td><code>manual.companies.manual</code></td>
+                    <td>domains[], source_description</td>
+                </tr>
+                <tr>
+                    <td><strong>Google SERP</strong></td>
+                    <td><code>google.companies.api</code></td>
+                    <td>queries[], max_pages, geo, language (existing flow)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Google Sheets адаптер:</strong> Члены команды вручную собирают лиды в Apollo/Clay/LinkedIn, вставляют в Google Sheets. Подайте URL листа → пайплайн обрабатывает (dedup, scrape, analyze). Auto-detects column mapping из имён заголовков (domain/website/url, company/name/organization, linkedin, employees, industry, country, city, email). Лист должен быть доступен "Anyone with link".</p>
+    </section>
+
+    <!-- SERVICE & API -->
+    <section id="gathering-service" class="wiki-section">
+        <h2>GatheringService — Оркестратор</h2>
+        <pre>class GatheringService:
+"""Orchestrates the full TAM gathering pipeline."""
+
+# ── GATHER ──
+async def start_gathering(
+self, project_id: int, source_type: str, filters: dict,
+triggered_by: str = "operator", notes: str = None
+) -> GatheringRun:
+"""Create GatheringRun, validate filters, execute adapter, store results."""
+
+# ── DEDUP ──
+async def dedup_and_store(
+self, gathering_run_id: int, companies: list[dict]
+) -> DedupeResult:
+"""Normalize domains, check existing DiscoveredCompanies, create/link."""
+
+# ── BLACKLIST (deterministic, $0) ──
+async def run_blacklist_check(
+self, gathering_run_id: int
+) -> BlacklistResult:
+"""Check vs project_blacklist, enterprise_blacklist, CRM mat.view, existing DCs."""
+
+# ── SCRAPE ──
+async def scrape_companies(
+self, gathering_run_id: int, pages: list[str] = ['/'],
+method: str = 'httpx', force: bool = False
+) -> ScrapeResult:
+"""Scrape website content. Skip if current non-expired scrape exists (unless force=True)."""
+
+# ── ANALYZE ──
+async def start_analysis(
+self, project_id: int, model: str, prompt_text: str,
+scope_filter: dict, triggered_by: str = "operator"
+) -> AnalysisRun:
+"""Create analysis run, process companies, store results."""
+
+async def compare_analysis_runs(
+self, run_id_1: int, run_id_2: int
+) -> ComparisonResult:
+"""Compare two runs: agreements, disagreements, confidence deltas."""
+
+# ── APPROVAL ──
+async def create_gate(
+self, project_id: int, gate_type: str, scope: dict, label: str
+) -> ApprovalGate:
+"""Create approval gate. Pipeline pauses until approved."""
+
+async def approve_gate(self, gate_id: int, operator: str, note: str = None) -> None
+async def reject_gate(self, gate_id: int, operator: str, note: str = None) -> None
+
+# ── CONTINUE PIPELINE ──
+async def continue_pipeline(
+self, gathering_run_id: int, next_phase: str
+) -> PhaseResult:
+"""Resume pipeline from a specific phase."""
+
+# ── HISTORY ──
+async def get_runs(self, project_id: int, source_type: str = None) -> list[GatheringRun]
+async def get_run_detail(self, run_id: int) -> GatheringRunDetail
+async def get_run_companies(self, run_id: int, page: int = 1) -> PaginatedCompanies</pre>
+    </section>
+
+    <section id="api-endpoints" class="wiki-section">
+        <h2>API Endpoints</h2>
+        <pre>POST   /api/pipeline/gathering/start                        -- start gathering run
+GET    /api/pipeline/gathering/runs                          -- list runs for project (with filters: source_type, status, date range)
+GET    /api/pipeline/gathering/runs/{id}                     -- run detail + stats + filter recall
+GET    /api/pipeline/gathering/runs/{id}/companies           -- companies from this run (paginated)
+POST   /api/pipeline/gathering/continue/{id}                 -- continue to next phase
+POST   /api/pipeline/gathering/estimate                      -- cost estimate without executing
+
+GET    /api/pipeline/gathering/sources                       -- list available source adapters + filter JSON schemas
+GET    /api/pipeline/gathering/sources/{type}/schema          -- JSON schema for specific source
+
+GET    /api/pipeline/gathering/approval-gates                -- pending gates
+POST   /api/pipeline/gathering/approval-gates/{id}/approve
+POST   /api/pipeline/gathering/approval-gates/{id}/reject
+
+GET    /api/pipeline/gathering/scrapes/{company_id}           -- all scrapes for a company (all versions, all pages)
+POST   /api/pipeline/gathering/scrapes/refresh                -- trigger re-scrape for expired content
+
+GET    /api/pipeline/gathering/analysis-runs                  -- list analysis runs
+GET    /api/pipeline/gathering/analysis-runs/{id}             -- run detail with result summary
+GET    /api/pipeline/gathering/analysis-runs/{a}/compare/{b}  -- compare two runs (disagreements, confidence deltas)
+
+GET    /api/pipeline/gathering/blacklist-check                -- check domains against CRM + blacklist (dry run)</pre>
+    </section>
+
+    <section id="files-overview" class="wiki-section">
+        <h2>Файлы проекта — Создание</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Файл</th>
+                    <th>Назначение</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>backend/app/models/gathering.py</code></td>
+                    <td>GatheringRun, CompanySourceLink, CompanyScrape, AnalysisRun, AnalysisResult, ApprovalGate</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/schemas/gathering.py</code></td>
+                    <td>Pydantic filter schemas per source + request/response models</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_service.py</code></td>
+                    <td>Pipeline orchestrator</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/__init__.py</code></td>
+                    <td>Adapter registry</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/base.py</code></td>
+                    <td>GatheringAdapter ABC</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/apollo_people_ui.py</code></td>
+                    <td>Wraps apollo_god_search.js</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/apollo_companies_ui.py</code></td>
+                    <td>Wraps apollo_companies_god.js</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/apollo_org_api.py</code></td>
+                    <td>Wraps apollo_service.search_organizations</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/clay_companies.py</code></td>
+                    <td>Wraps clay_service.run_tam_export</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/clay_people.py</code></td>
+                    <td>Wraps clay_service.run_people_search</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/csv_import.py</code></td>
+                    <td>CSV file import</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/services/gathering_adapters/manual.py</code></td>
+                    <td>Direct domain list</td>
+                </tr>
+                <tr>
+                    <td><code>backend/app/api/gathering.py</code></td>
+                    <td>API router</td>
+                </tr>
+                <tr>
+                    <td><code>backend/alembic/versions/202603201_gathering_system.py</code></td>
+                    <td>Migration</td>
+                </tr>
+                <tr>
+                    <td><code>scripts/migrate_existing_tam.py</code></td>
+                    <td>Import existing EasyStaff JSON data</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- IMPLEMENTATION -->
+    <section id="migration" class="wiki-section">
+        <h2>Миграция существующих EasyStaff данных</h2>
+        <p>Существующие JSON файлы из Dubai agency gathering ДОЛЖНЫ быть импортированы в новую систему.</p>
+        <h3>Что существует:</h3>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Файл</th>
+                    <th>Записи</th>
+                    <th>Источник</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>data/dubai_agency_companies_full.json</code></td>
+                    <td>295</td>
+                    <td>apollo_people_ui, Strategy A (32 keywords)</td>
+                </tr>
+                <tr>
+                    <td><code>data/uae_god_search_companies.json</code></td>
+                    <td>5,602</td>
+                    <td>apollo_people_ui, Strategy B (seniority)</td>
+                </tr>
+                <tr>
+                    <td><code>data/uae_god_search_people.json</code></td>
+                    <td>12,201</td>
+                    <td>apollo_people_ui, Strategy B (people records)</td>
+                </tr>
+                <tr>
+                    <td><code>data/uae_20k_companies.json</code></td>
+                    <td>7,782</td>
+                    <td>apollo_companies_ui (industry tags + keywords)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Скрипт миграции: <code>scripts/migrate_existing_tam.py</code></h3>
+        <ol>
+            <li><strong>Создать GatheringRuns</strong> для каждого исторического поиска:
+                <ul>
+                    <li>Run 1: <code>source_type=apollo.people.emulator, source_subtype=strategy_a, filters={person_locations: ["Dubai, UAE"], q_organization_name: "32 keywords", max_pages: 10}, status=completed</code></li>
+                    <li>Run 2: <code>source_type=apollo.people.emulator, source_subtype=strategy_b, filters={person_locations: [...3 UAE cities], person_seniorities: ["founder","c_suite","owner"], organization_num_employees_ranges: ["1,10"..."101,200"], max_pages: 10}, status=completed</code></li>
+                    <li>Run 3: <code>source_type=apollo.companies.emulator, source_subtype=industry_tags, filters={organization_locations: ["United Arab Emirates"], organization_industry_tag_ids: [...], organization_num_employees_ranges: [...], max_pages: 100}, status=completed</code></li>
+                </ul>
+            </li>
+            <li><strong>Создать/обновить DiscoveredCompanies</strong> для каждого уникального домена:
+                <ul>
+                    <li>Нормализовать домен через <code>domain_service.normalize_domain()</code></li>
+                    <li>Upsert by <code>(company_id, project_id, domain)</code></li>
+                    <li>Установить: name, employees, linkedin_url, company_info из богатейшего источника</li>
+                </ul>
+            </li>
+            <li><strong>Создать company_source_links</strong> для каждой пары (company, run):
+                <ul>
+                    <li><code>source_data</code> = raw record из этого источника</li>
+                    <li><code>source_rank</code> = position в исходных результатах</li>
+                </ul>
+            </li>
+            <li><strong>Импортировать людей как ExtractedContacts</strong> (из <code>uae_god_search_people.json</code>):
+                <ul>
+                    <li>Связать с DiscoveredCompany по домену</li>
+                    <li><code>source = APOLLO</code> (extracted via Puppeteer, но не API, но же структура данных)</li>
+                </ul>
+            </li>
+            <li><strong>Обновить GatheringRun counters:</strong> raw_results_count, new_companies_count, duplicate_count</li>
+        </ol>
+
+        <h3>Порядок миграции:</h3>
+        <ol>
+            <li>Запустить миграцию для largest dataset первым (uae_god_search = 5,602 компаний)</li>
+            <li>Затем keyword search (295) — mostly duplicates, создаёт source_links</li>
+            <li>Затем companies tab (7,782) — много new, некоторое перекрытие</li>
+        </ol>
+    </section>
+
+    <section id="implementation-order" class="wiki-section">
+        <h2>Порядок реализации</h2>
+        <p><strong>Фаза A — Data layer (1 день)</strong></p>
+        <ol>
+            <li>SQLAlchemy models в <code>gathering.py</code></li>
+            <li>Pydantic schemas в <code>schemas/gathering.py</code></li>
+            <li>Alembic migration (все новые таблицы + column extensions)</li>
+            <li>Materialized view для CRM blacklist</li>
+        </ol>
+
+        <p><strong>Фаза B — Core service + Apollo adapter (2 дня)</strong></p>
+        <ol start="5">
+            <li>GatheringAdapter ABC + adapter registry</li>
+            <li>ApolloOrgAPIAdapter (самый простой — wraps existing service directly)</li>
+            <li>GatheringService: start_gathering + dedup + blacklist</li>
+            <li>API endpoints: start, list runs, run detail</li>
+        </ol>
+
+        <p><strong>Фаза C — Scraping + analysis (1-2 дня)</strong></p>
+        <ol start="9">
+            <li>company_scrapes write path в scraper_service</li>
+            <li>TTL check + re-scrape scheduler</li>
+            <li>analysis_runs/results write path</li>
+            <li>AI analysis extracted из company_search_service в reusable function</li>
+        </ol>
+
+        <p><strong>Фаза D — Migration + remaining adapters (1-2 дня)</strong></p>
+        <ol start="13">
+            <li><code>migrate_existing_tam.py</code> — import EasyStaff JSON data</li>
+            <li>ApolloPeopleUIAdapter, ApolloCompaniesUIAdapter (wrap JS scripts)</li>
+            <li>ClayCompaniesAdapter, CSVImportAdapter</li>
+        </ol>
+
+        <p><strong>Фаза E — Approval gates + remaining API (1 день)</strong></p>
+        <ol start="16">
+            <li>Approval gate creation/resolution</li>
+            <li>Analysis comparison endpoint</li>
+            <li>Scrape refresh endpoint</li>
+        </ol>
+
+        <p><strong>Фаза F — MCP prep (1 день)</strong></p>
+        <ol start="19">
+            <li>JSON schema export для всех адаптеров</li>
+            <li>MCP tool auto-registration</li>
+        </ol>
+    </section>
+
+    <!-- EDGE CASES -->
+    <section id="edge-cases" class="wiki-section">
+        <h2>Критические граничные случаи и решения по дизайну</h2>
+
+        <h3>1. Company Identity Resolution (Multi-Domain)</h3>
+        <p><strong>Проблема:</strong> Одна и та же компания может иметь несколько доменов: <code>acme.com</code>, <code>acme.ae</code>, <code>acme.co.uk</code>. Apollo говорит "Frizzon Studios", Clay говорит "Frizzon Productions". Dedup только по домену это пропускает.</p>
+        <p><strong>Решение:</strong> Two-layer dedup:</p>
+        <ul>
+            <li><strong>Layer 1 (instant, free):</strong> Exact domain match после нормализации (strip www, lowercase)</li>
+            <li><strong>Layer 2 (fuzzy, в PRE-FILTER phase):</strong> Company name similarity (Levenshtein или trigram) + LinkedIn URL match. Если две DiscoveredCompanies share LinkedIn company URL → merge.</li>
+        </ul>
+        <p><strong>Реализация:</strong> <code>discovered_companies.linkedin_company_url</code> как secondary unique identifier. На insert, проверить оба домен И linkedin URL. Если linkedin matches existing с другим доменом → link как alias, не создавать duplicate.</p>
+
+        <h3>2. Domain Resolution Phase</h3>
+        <p><strong>Проблема:</strong> 8,766 компаний из Companies tab имеют LinkedIn URLs но БЕЗ доменов. Не могу скрапить сайты или проверить email enrichment без доменов.</p>
+        <p><strong>Решение:</strong> New pipeline phase RESOLVE между PRE-FILTER и SCRAPE:</p>
+        <ol>
+            <li><strong>LinkedIn → domain:</strong> Apollo <code>enrich_organization(linkedin_url)</code> возвращает <code>primary_domain</code> (1 кредит на вызов, но высокая ценность)</li>
+            <li><strong>Company name → domain:</strong> Google поиск <code>"{company_name}" site:{country_tld}</code> → extract домен из первого результата</li>
+            <li><strong>Skip если unnecessary:</strong> Только запустить для компаний missing domain после GATHER</li>
+            <li><strong>Budget-gated:</strong> Оператор одобряет batch size перед трат Apollo credits</li>
+        </ol>
+
+        <h3>3. Re-Run Lineage</h3>
+        <p><strong>Проблема:</strong> Оператор хочет повторить поиск из 2 недель назад потому что "Apollo может иметь новые компании сейчас." Но <code>filter_hash</code> dedup отклонит это как duplicate.</p>
+        <p><strong>Решение:</strong> <code>parent_run_id</code> на gathering_runs:</p>
+        <div class="callout callout--info" style="padding: 12px 16px;">
+  <code style="font-family: var(--font-mono); font-size: 0.8125rem;">gathering_runs.parent_run_id &nbsp;<span style="color: var(--color-info-600);">FK(gathering_runs)</span> NULL &mdash; "this is a re-run of run #42"</code>
+</div>
+        <p>Когда <code>parent_run_id</code> установлен, filter_hash dedup пропускается. Система сравнивает результаты: "Run #42 found 5,602 компаний. Re-run #65 found 5,840. Net new: 238."</p>
+
+        <h3>4. Conversion Provenance (Full Funnel Tracking)</h3>
+        <p><strong>Проблема:</strong> "Какой запуск сбора фактически привёл к сделке, которую мы закрыли?" Не могу ответить без отслеживания цепи: gathering_run → DiscoveredCompany → ExtractedContact → Contact → Campaign → ProcessedReply → Meeting.</p>
+        <p><strong>Решение:</strong> Уже частично решено:</p>
+        <ul>
+            <li><code>extracted_contacts.discovered_company_id</code> → links к DiscoveredCompany</li>
+            <li><code>contacts.provenance</code> JSON хранит <code>gathering_details</code> (из <code>pipeline_service.promote_to_crm()</code>)</li>
+            <li><code>DiscoveredCompany → company_source_links → gathering_runs</code></li>
+        </ul>
+        <p><strong>Добавить:</strong> <code>contacts.gathering_run_id</code> FK для прямой lineage:</p>
+        <pre># На Contact model:
+gathering_run_id = Column(Integer, ForeignKey('gathering_runs.id'))</pre>
+
+        <h3>5. Central Quota Management</h3>
+        <p><strong>Проблема:</strong> Два оператора запускают Apollo поиски одновременно → оба попадают в 429 rate limit. Или MCP агент сжигает все Clay credits в одном запуске.</p>
+        <p><strong>Решение:</strong> Adapter-level quota tracker (не БД — in-memory с Redis или простой file lock).</p>
+
+        <h3>6. Parallel Gathering Strategy</h3>
+        <p><strong>Проблема:</strong> Для нового проекта, оператор хочет искать Apollo People + Apollo Companies + Clay TAM одновременно, затем merge результаты.</p>
+        <p><strong>Решение:</strong> Несколько <code>gathering_runs</code> sharing одно и то же <code>pipeline_run_id</code>. Пайплайн ждёт ВСЕ runs с этим <code>pipeline_run_id</code> завершиться перед переходом к DEDUP.</p>
+
+        <h3>7. Effectiveness Learning Loop</h3>
+        <p><strong>Проблема:</strong> После 10 запусков сбора, оператор хочет знать: "Какая комбинация source type + filter дала лучший целевой процент?"</p>
+        <p><strong>Решение:</strong> Добавить вычисляемые метрики в <code>gathering_runs</code> (populated после ANALYZE phase):
+        <pre>gathering_runs (additional columns):
+├── target_rate            FLOAT     -- targets_found / new_companies_count
+├── avg_analysis_confidence FLOAT    -- mean confidence of targets from this run
+├── cost_per_target_usd    NUMERIC   -- total_cost_usd / targets_found
+├── enrichment_hit_rate    FLOAT     -- emails_found / targets_enriched (populated after ENRICH)</pre>
+        </p>
+
+        <h3>8. Export Flexibility (Pluggable Outputs)</h3>
+        <p><strong>Проблема:</strong> Результаты нужно идти в разные destinations: Google Sheets (review), CSV (download), SmartLead (campaign), GetSales (LinkedIn), Clay table (further enrichment), webhook (custom integration).</p>
+        <p><strong>Решение:</strong> Output adapters (же pattern как gathering adapters).</p>
+    </section>
+
+    <!-- REAL-WORLD EXAMPLE -->
+    <section id="easystaff" class="wiki-section">
+        <h2>Реальный пример: EasyStaff Global (Проект 9)</h2>
+        <p>Этот пайплайн использовался для сбора, анализа и проверки 7,900+ целевых компаний через 20+ городов. Пайплайн создал 8 новых SmartLead кампаний (regional splits: US, UK, Gulf, India, APAC, Australia, LatAm-Africa, плюс варианты). EasyStaff Global имеет ~170 кампаний всего — большинство были созданы до этого пайплайна, через ручные процессы.</p>
+
+        <h3>Step-by-Step: Как это на самом деле работало</h3>
+        <div class="wiki-timeline">
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">1</span>
+      <span class="wiki-timeline__title">GATHER из Apollo</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Применить фильтры keyword + city + size к Apollo Companies UI.<br>
+      ~80 ключевых слов &times; 20 городов = 50+ gathering runs.<br>
+      Фильтры каждого run <strong>сохранены</strong> в <code>gathering_runs.filters</code> (JSONB).
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--free">Puppeteer emulator &mdash; Free</span>
+  </div>
+
+  <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">2</span>
+      <span class="wiki-timeline__title">DEDUP + BLACKLIST</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Нормализация доменов &rarr; <code>company_source_links</code> (multi-source bridge).<br>
+      Проверка против 170 существующих кампаний EasyStaff &rarr; отклонение пересечений.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--stop">&#9733; Checkpoint 1 &mdash; оператор подтверждает scope проекта</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">3</span>
+      <span class="wiki-timeline__title">SCRAPE сайтов</span>
+    </div>
+    <div class="wiki-timeline__body">
+      50 параллельных соединений, streaming коммиты per-company.<br>
+      Crash-safe: <code>on_result</code> callback сохраняет каждую компанию индивидуально.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--free">httpx + Apify proxy &mdash; Free</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">4</span>
+      <span class="wiki-timeline__title">PRE-FILTER алгоритмически</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Удалить: сайт недоступен, оффлайн индустрии (ресторан, отель), мусорные домены (.gov, .edu), пустые/паркованные сайты.<br>
+      ~40&ndash;60% rejection rate &mdash; дёшево, быстро, без false negatives. <strong>Без AI.</strong>
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--free">Детерминистический &mdash; $0</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">5</span>
+      <span class="wiki-timeline__title">ANALYZE через GPT-4o-mini</span>
+    </div>
+    <div class="wiki-timeline__body">
+      AI классифицирует каждую компанию: <code>is_target</code>? confidence? сегмент? reasoning?<br>
+      Использует ICP промпт специфичный для этого проекта.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--cheap">~$0.01&ndash;0.05 за батч из 500</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">6</span>
+      <span class="wiki-timeline__title">VERIFY через Opus (Claude)</span>
+    </div>
+    <div class="wiki-timeline__body">
+      16 параллельных Opus агентов проверяют ВСЕ цели GPT. Каждый агент получает ~260 компаний.<br>
+      Находит false positives: SaaS продукты, solo консультанты, неправильная география, гос. организации.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--cheap">AI верификация</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">7</span>
+      <span class="wiki-timeline__title">ADJUST PROMPT &rarr; повторить шаги 5&ndash;6</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Критический цикл: 8 итераций промпта для EasyStaff.<br>
+      V1: 0% &rarr; V2: 76% &rarr; V3: 93% &rarr; V4: 83% &rarr; V5: 86% &rarr; V6: 88% &rarr; V7: 93.6% &rarr; <strong>V8: 95.1%</strong><br>
+      Цикл завершается когда Opus верификация показывает &ge;90% accuracy.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--stop">Итерировать до &ge;90% accuracy</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">8</span>
+      <span class="wiki-timeline__title">PEOPLE SEARCH</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Найти до 3 decision-makers на каждую верифицированную компанию.<br>
+      Фильтры: founder, c_suite, vp, director. Результат: ~1.4 контакта на компанию.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--free">Apollo People emulator &mdash; Free</span>
+  </div>
+
+  <div class="wiki-timeline__step wiki-timeline__step--expensive">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">9</span>
+      <span class="wiki-timeline__title">FINDYMAIL верификация email</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Для контактов где Apollo не предоставляет верифицированный email.<br>
+      438 контактов верифицировано за один 88-минутный батч.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--expensive">$0.01/email &mdash; &#9733; Checkpoint 3</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">10</span>
+      <span class="wiki-timeline__title">GOD_SEQUENCE &mdash; генерация последовательности</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Система собирает знания из 3 уровней в один промпт Gemini:<br>
+      <strong>Уровень 1</strong> &mdash; Универсальные паттерны &middot; <strong>Уровень 2</strong> &mdash; Бизнес-знания &middot; <strong>Уровень 3</strong> &mdash; Project ICP
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--cheap">Gemini 2.5 Pro &mdash; ~$0.08</span>
+  </div>
+
+  <div class="wiki-timeline__step">
+    <div class="wiki-timeline__header">
+      <span class="wiki-timeline__number">11</span>
+      <span class="wiki-timeline__title">SMARTLEAD создание кампании + загрузка лидов</span>
+    </div>
+    <div class="wiki-timeline__body">
+      Создаёт SmartLead кампанию (DRAFT state). Устанавливает GOD_SEQUENCE 5-шаговую последовательность.<br>
+      8 региональных кампаний: "Petr ES US", "Petr ES UK", "Petr ES Gulf", "Petr ES India", и т.д.
+    </div>
+    <span class="wiki-timeline__meta wiki-timeline__meta--free">Campaign push</span>
+  </div>
+</div>
+    </section>
+
+    <section id="prompt-loop" class="wiki-section">
+        <h2>Цикл итераций промптов (Steps 5-7) — The Core</h2>
+        <p>Это что разделяет хороший сбор от плохого. Пайплайн не "run GPT once and push." Это closed loop:</p>
+        <pre>  ┌──────────────────────────────────────────┐
+│                                          │
+v                                          │
+GPT-4o-mini analyzes ──► Opus verifies ──► <90%? ──YES──► Adjust prompt
+│                         │                              (add exclusions
+│                         │                               из FP patterns)
+│                         v
+│                      ≥90%? ──YES──► DONE, proceed к people search
+│
+└── Uses project-specific ICP prompt
+stored в gathering_prompts table
+с effectiveness tracking (target_rate, usage_count)</pre>
+
+        <p><strong>Что Opus catches что GPT пропускает:</strong></p>
+        <ul>
+            <li>Game studios building own IP (not doing client work)</li>
+            <li>Management/strategy consulting (uses employees, не freelancers)</li>
+            <li>SaaS products (не service businesses)</li>
+            <li>Solo consultants / fractional CxOs (1-person operations)</li>
+            <li>Wrong geography (Indian "Pvt Ltd" entities, Oman, Lebanon)</li>
+            <li>Government subsidiaries</li>
+            <li>Investment/VC firms</li>
+        </ul>
+
+        <h3>Keyword Effectiveness Tracking</h3>
+        <p>Каждый gathering run хранит его фильтры. После анализа, <code>target_rate</code> вычисляется per run. Это позволяет рейтинг keywords по ROI:</p>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Tier</th>
+                    <th>Target Rate</th>
+                    <th>Keywords</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Tier 1</strong> (35-45%)</td>
+                    <td>Best</td>
+                    <td>staffing agency, design agency, marketing agency</td>
+                </tr>
+                <tr>
+                    <td><strong>Tier 2</strong> (26-35%)</td>
+                    <td>Good</td>
+                    <td>outsourcing company, digital agency, creative agency</td>
+                </tr>
+                <tr>
+                    <td><strong>Tier 3</strong> (14-23%)</td>
+                    <td>Low</td>
+                    <td>software development, consulting firm, IT services</td>
+                </tr>
+                <tr>
+                    <td><strong>DO NOT USE</strong> (<5%)</td>
+                    <td>Waste</td>
+                    <td>fintech, saas, blockchain, crypto</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Эти данные живут в <code>gathering_runs.target_rate</code> и информируют будущие запуски:</p>
+        <pre>SELECT source_subtype, AVG(target_rate) FROM gathering_runs
+WHERE project_id = 9 AND status = 'completed'
+GROUP BY source_subtype ORDER BY avg DESC;</pre>
+    </section>
+
+    <section id="key-learnings" class="wiki-section">
+        <h2>Ключевые выводы</h2>
+        <ol>
+            <li><strong>Puppeteer > API для сбора</strong> — Apollo emulator бесплатен, API стоит credits. Использовали API только для 10K credits blitz чтобы cover больше keywords быстрее.</li>
+            <li><strong>Цикл итераций промпта essential</strong> — V1 имел 0% accuracy, V8 достиг 95.1%. Восемь iterations, каждый driven by Opus false-positive анализ. Нет shortcut.</li>
+            <li><strong>Keyword effectiveness varies 10x</strong> — "staffing agency" hits 45% целевой процент, "fintech" hits <5%. Track <code>target_rate</code> per run чтобы избежать траты времени на bad keywords.</li>
+            <li><strong>Streaming scrape essential</strong> — Старый batch scrape потерял весь progress при крахе. Новый streaming approach коммитит per-company через <code>on_result</code> callback. 50 concurrent connections, ~344 companies/min.</li>
+            <li><strong>People search заполняет gap</strong> — Apollo Companies даёт домены, но не контакты. Отдельный People search step находит 1-3 decision-makers per company. FindyMail needed только для emails Apollo не может verify.</li>
+        </ol>
+    </section>
+
+    <!-- SUMMARY -->
+    <section id="summary" class="wiki-section">
+        <h2>Итого: Что делает это God-Level</h2>
+        <table class="wiki-table">
+            <thead>
+                <tr>
+                    <th>Принцип</th>
+                    <th>Как</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Source-agnostic</strong></td>
+                    <td>БД хранит opaque JSONB. Новый источник = новый адаптер, zero DB changes</td>
+                </tr>
+                <tr>
+                    <td><strong>Filter memory</strong></td>
+                    <td>Каждый поиск запомнен с точными параметрами. Переиспользуемо. Перезапускаемо.</td>
+                </tr>
+                <tr>
+                    <td><strong>Multi-source dedup</strong></td>
+                    <td>Одна компания найдена 5 источниками → 1 DiscoveredCompany + 5 source_links</td>
+                </tr>
+                <tr>
+                    <td><strong>Cheapest first</strong></td>
+                    <td>Бесплатная pattern matching → бесплатный blacklist → дешёвый скрапинг → дорогой AI → costly enrichment</td>
+                </tr>
+                <tr>
+                    <td><strong>Full provenance</strong></td>
+                    <td>gathering_run → DiscoveredCompany → ExtractedContact → CRM Contact → Meeting → Deal</td>
+                </tr>
+                <tr>
+                    <td><strong>Versioned scraping</strong></td>
+                    <td>Несколько страниц per company, TTL-based re-scrape, все версии сохранены</td>
+                </tr>
+                <tr>
+                    <td><strong>Multi-run analysis</strong></td>
+                    <td>Разные модели, разные промпты, сравнивайте результаты, operator override</td>
+                </tr>
+                <tr>
+                    <td><strong>Approval gates</strong></td>
+                    <td>Human-in-the-loop перед каждым credit-spending шагом</td>
+                </tr>
+                <tr>
+                    <td><strong>MCP-ready</strong></td>
+                    <td>Адаптеры expose JSON schemas. <code>tam_gather_{source}</code> tools auto-registered</td>
+                </tr>
+                <tr>
+                    <td><strong>Learning loop</strong></td>
+                    <td>target_rate, cost_per_target tracked per run. System recommends best sources</td>
+                </tr>
+                <tr>
+                    <td><strong>Project-aware</strong></td>
+                    <td>Читает ICP, products, competitors, case studies, existing contacts. Не dumb filter machine</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+      <!-- CODE REFERENCE -->
+      <section class="wiki-section" id="code-overview">
+        <h2>Обзор скрипта <a href="#code-overview" class="anchor-link">#</a></h2>
+        <p><code>universal_pipeline.py</code> — продакшн-реализация всего, что описано в этой вики. Универсальный pipeline для сбора лидов — работает с любым проектом. Вся конфигурация (сегменты, email-копия, аккаунты) загружается из БД. Ничего не захардкожено на проект.</p>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Файл</div>
+            <div class="wiki-dl__desc"><code>universal_pipeline.py</code> — единая точка входа (~1550 строк), без зависимостей от фреймворков, только <code>httpx</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Архитектура</div>
+            <div class="wiki-dl__desc">Последовательная цепочка функций: <code>step0_start</code> → <code>step2_blacklist</code> → … → <code>step12_upload</code>. Каждый шаг вызывает backend API и возвращает состояние для следующего шага.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Конфиг</div>
+            <div class="wiki-dl__desc">Вся конфигурация проекта загружается из БД при запуске через <code>ProjectConfig.load()</code>. Ничего не захардкожено на проект. Для изменения конфига — обновьте данные в БД через API, скрипт подхватит изменения при следующем запуске.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Состояние</div>
+            <div class="wiki-dl__desc">JSON-файлы в директории <code>state/</code>. Pipeline может продолжить с любого шага после сбоя.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Внешние API</div>
+            <div class="wiki-dl__desc">Apollo (поиск людей), FindyMail (обогащение email, $0.01 за найденный email), SmartLead (доставка кампаний), Backend API на localhost:8000 (движок сбора, классификация, gates)</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Запуск</div>
+            <div class="wiki-dl__desc">Только на продакшн-сервере Hetzner. Backend должен быть запущен на <code>localhost:8000</code>. Переменные среды загружаются через <code>set -a && source .env && set +a</code></div>
+          </div>
+        </div>
+
+        <h3>Как работает pipeline (простыми словами)</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаги 0–2</div>
+            <div class="wiki-dl__desc"><strong>ПОИСК КОМПАНИЙ</strong> — поиск компаний через Clay/Apollo используя описание Ideal Customer Profile (ICP). Удаляем дубликаты и уже сокращённые компании. Стоимость: Clay ~$0.01 за компанию, Apollo бесплатно (через UI emulator).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаги 3–4</div>
+            <div class="wiki-dl__desc"><strong>ФИЛЬТРАЦИЯ И СКРЕЙП</strong> — удаляем мусор (offline бизнесы, мёртвые сайты, .gov/.edu домены). Качаем контент сайтов для анализа.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 5</div>
+            <div class="wiki-dl__desc"><strong>КЛАССИФИКАЦИЯ</strong> — GPT анализирует сайт каждой компании и решает: это наш клиент или нет? Присваивает сегмент (platform/agency/OTHER) и confidence score.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаги 6–8</div>
+            <div class="wiki-dl__desc"><strong>ПОДГОТОВКА ВЕРИФИКАЦИИ</strong> — подготовка к email-верификации (оценка стоимости). CP3: оператор одобряет расходы перед зарядом FindyMail.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 9</div>
+            <div class="wiki-dl__desc"><strong>ЭКСПОРТ</strong> — экспорт одобренных таргет-компаний из БД. Разбиваем по сегментам, сохраняем CSV локально и в Google Sheets. Эти компании — основа для поиска людей на следующем шаге.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 10</div>
+            <div class="wiki-dl__desc"><strong>ИМПОРТ ЛЮДЕЙ</strong> — оператор вручную ищет людей (decision-makers) в Apollo People UI используя список таргет-компаний из шага 9. Экспортирует как CSV. Этот шаг импортирует CSV: маппинг колонок Apollo → наш формат, обогащение domain/segment/social_proof, дедупликация.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 11</div>
+            <div class="wiki-dl__desc"><strong>ПОИСК EMAIL</strong> — FindyMail ищет рабочий email по LinkedIn URL. Платим только за найденные email ($0.01 каждый). Типичный hit rate: 60–80% (из 500 LinkedIn профилей → ~350–400 верифицированных email).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 12</div>
+            <div class="wiki-dl__desc"><strong>ЗАГРУЗКА В SMARTLEAD</strong> — создаём кампанию, привязываем email-аккаунты, загружаем лиды, загружаем email-секвенции, устанавливаем расписание. Каждый подшаг требует подтверждения оператора. Кампания НИКОГДА не активируется автоматически.</div>
+          </div>
+        </div>
+
+        <h3>Checkpoints (gates одобрения оператором)</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">★ CP1</div>
+            <div class="wiki-dl__desc">После blacklist check: "Правильный проект? Правильный scope?" — оператор подтверждает, что список таргетов выглядит адекватно, прежде чем начнётся дорогостоящая обработка.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">★ CP2</div>
+            <div class="wiki-dl__desc">После классификации: "Список компаний правильный?" — оператор проверяет решения GPT target/non-target. Удаляет false positives.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">★ CP3</div>
+            <div class="wiki-dl__desc">Перед FindyMail: "Одобрить расходы?" — показывает оценку стоимости (emails × $0.01). Оператор подтверждает, прежде чем будут потрачены деньги.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">★ Активация</div>
+            <div class="wiki-dl__desc">НИКОГДА не запускается автоматически. Оператор активирует кампанию вручную в SmartLead UI после финального обзора всех настроек.</div>
+          </div>
+        </div>
+
+        <h3>Pipeline Flow (техническая схема)</h3>
+<pre><code>Шаги 0-8:  Backend API сбора (Clay/Apollo → Dedup → Blacklist → Scrape → Classify)
+Шаг 9:     Экспорт таргетов из БД (docker exec psql)
+Шаг 10:    Импорт Apollo People CSV (результаты ручного поиска)
+Шаг 11:    Обогащение email FindyMail (async, 5 параллельно)
+Шаг 12:    Загрузка в SmartLead (с checkpoints на каждом подшаге)</code></pre>
+
+        <h3>Примеры использования</h3>
+<pre><code># Полный pipeline от сбора
+python3 universal_pipeline.py --project-id 42 --mode structured --segment influencer_platforms
+
+# Продолжить с импорта Apollo People
+python3 universal_pipeline.py --project-id 42 --from-step people --apollo-csv export.csv
+
+# Поиск похожих компаний
+python3 universal_pipeline.py --project-id 42 --mode lookalike --examples "impact.com,modash.io"
+
+# Расширить предыдущий ран на новую географию
+python3 universal_pipeline.py --project-id 42 --mode expand --base-run 198 \
+  --override '{"country_names": ["Singapore", "Thailand"]}'
+
+# Пробный запуск (только preview, без API вызовов)
+python3 universal_pipeline.py --project-id 42 --mode structured --segment agencies_mena --dry-run</code></pre>
+      </section>
+
+      <section class="wiki-section" id="code-config">
+        <h2>ProjectConfig <a href="#code-config" class="anchor-link">#</a></h2>
+        <p>Центральный класс конфигурации. Загружается из БД при каждом запуске pipeline. Содержит: сегменты (кому мы продаём — названия, должности decision-makers, social proof по регионам), промпт классификации (GPT решает "наш клиент или нет"), email-аккаунты для отправки через SmartLead, расписание отправки (дни, время, интервал). Для изменения конфигурации — обновьте данные в БД через API, скрипт подхватит изменения при следующем запуске.</p>
+<pre><code>class ProjectConfig:
+    def __init__(self, project_id: int):
+        self.project_id = project_id
+        self.project_name = ""
+        self.segments = {}          # slug → данные сегмента из kb_segments
+        self.prompt_id = None       # последний активный промпт из gathering_prompts
+        self.prompt_text = ""       # текст промпта (фоллбэк)
+        self.email_accounts = []    # ID аккаунтов SmartLead
+        self.schedule = {}          # конфиг расписания SmartLead
+        self.state_dir = None       # директория состояния для этого проекта
+        self.csv_dir = None         # директория выходных CSV</code></pre>
+
+        <h3>load() — что загружается из БД</h3>
+        <p>Вызывается один раз при запуске pipeline. Загружает 5 типов данных:</p>
+        <div class="wiki-timeline">
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">1</span>
+              <span class="wiki-timeline__title">Имя проекта</span>
+            </div>
+            <div class="wiki-timeline__body">
+              <code>GET /contacts/projects/{id}</code> → <code>self.project_name</code>. Используется в названиях кампаний и CSV файлов.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">2</span>
+              <span class="wiki-timeline__title">Сегменты из <code>kb_segments</code></span>
+            </div>
+            <div class="wiki-timeline__body">
+              <code>GET /knowledge-base/segments</code> → фильтруем по <code>project_id</code> и <code>is_active</code>. Каждый сегмент хранится как <code>slug → {id, name, titles, seniorities, social_proof, campaign_name_template, default_filters, ...}</code>. Сегменты определяют кому мы продаём — должности decision-makers, social proof текст по регионам, фильтры Clay поиска.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">3</span>
+              <span class="wiki-timeline__title">Последний промпт из <code>gathering_prompts</code></span>
+            </div>
+            <div class="wiki-timeline__body">
+              <code>get_latest_prompt(project_id)</code> → <code>(prompt_id, prompt_text)</code>. Выбирает промпт с максимальным ID среди активных. Показывает count использований и average target rate для мониторинга качества промпта по итерациям.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">4</span>
+              <span class="wiki-timeline__title">Конфиг SmartLead из <code>project_knowledge</code></span>
+            </div>
+            <div class="wiki-timeline__body">
+              Два ключа: <code>smartlead/email_accounts</code> → список ID аккаунтов, <code>smartlead/config</code> → расписание (дни, таймзона, start/end час, интервал). Оба хранятся как JSON строки в поле <code>value</code>.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">5</span>
+              <span class="wiki-timeline__title">Директории состояния и выходных данных</span>
+            </div>
+            <div class="wiki-timeline__body">
+              <code>state_dir = ../state/{project_slug}/</code> — JSON файлы состояния для восстановления после сбоя. <code>csv_dir = output/{project_slug}/pipeline/</code> — CSV экспорты. Обе создаются с <code>mkdir -p</code> при каждом запуске.
+            </div>
+          </div>
+        </div>
+
+        <h3>Методы</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_segment(slug)</code></div>
+            <div class="wiki-dl__desc">Возвращает конфиг сегмента по slug. Если не найден — выводит доступные сегменты и <code>sys.exit(1)</code>. Fail-fast дизайн: лучше остановиться немедленно, чем молча использовать неправильные данные.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_social_proof(country, slug)</code></div>
+            <div class="wiki-dl__desc">Возвращает country-specific социальный proof текст для персонализации писем. Ищет <code>segment.social_proof[country]</code>, фоллбэк на ключ <code>_default</code>. Пример: UK получает "trusted by 200+ UK agencies", India получает "used by Flipkart, Nykaa".</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_titles(slug)</code></div>
+            <div class="wiki-dl__desc">Target должности для Apollo People поиска. Дефолты: <code>["CEO", "Founder", "CTO", "Head of Product"]</code>. Кастомизируется на сегмент.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_seniorities(slug)</code></div>
+            <div class="wiki-dl__desc">Уровни seniority для Apollo фильтра поиска. Дефолты: <code>["owner", "founder", "c_suite", "vp", "head", "director"]</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_campaign_name(slug, contacts)</code></div>
+            <div class="wiki-dl__desc">Генерирует имя SmartLead кампании из шаблона: <code>c-{project}_{segment} {geo} #C</code>. Авто-определяет гео из стран контактов: если >3 страны → "ALL GEO", иначе выписывает их (напр. "UK, UAE, India").</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>validate_email_accounts()</code></div>
+            <div class="wiki-dl__desc">Проверяет каждый SmartLead аккаунт через API. Удаляет неактивные из списка и обновляет БД. При ошибке API — оставляет аккаунт (безопасный дефолт: никогда не удаляем без подтверждения). Выводит отчёт активные/всего.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="wiki-section" id="code-gathering">
+        <h2>Сбор — шаги 0–8 <a href="#code-gathering" class="anchor-link">#</a></h2>
+        <p>Последовательная обработка компаний: поиск компаний через Clay/Apollo используя описание ICP, удаление дубликатов и уже сокращённых, фильтрация мусора, скрейпинг сайтов, классификация через GPT, подготовка к email-верификации. Каждый шаг — отдельная функция, которая вызывает backend API. Оператор подтверждает на 3 checkpoints перед тем, как будут потрачены деньги.</p>
+
+        <div class="wiki-timeline">
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">0</span>
+              <span class="wiki-timeline__title"><code>step0_start()</code> — Начать поиск компаний</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Отправляет описание ICP в Clay или Apollo. Система ищет компании по ключевым словам, индустрии, размеру, географии. Результат: список доменов компаний (напр. thegoatagency.com, modash.io).
+<pre><code>result = api("post", "/pipeline/gathering/start", json={
+    "project_id": config.project_id,
+    "source_type": "clay.companies.emulator",
+    "filters": filters,
+    "triggered_by": "operator",
+    "input_mode": mode,        # natural/structured/lookalike/expand
+    "input_text": input_text,  # естественное описание
+    "notes": notes,            # для логирования
+})</code></pre>
+              Возвращает <code>run_id</code>, сохраняет состояние. Затем <strong>поллит каждые 15 секунд</strong> до завершения фазы сбора (Clay обработка может занять минуты). Если 10+ подряд ошибок соединения — выходит с командой resume.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--free">Clay ~$0.01 за компанию, Apollo бесплатно</span>
+          </div>
+
+          <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">2</span>
+              <span class="wiki-timeline__title"><code>step2_blacklist()</code> — Проверка блэклиста</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Проверяет, сокращали ли мы уже эти компании. Вызывает <code>POST /runs/{id}/blacklist-check</code>. Backend кросс-проверяет таблицу <code>project_blacklist</code> и создаёт gate CP1. Функция сохраняет gate ID в состояние, выводит counts passed/rejected. Pipeline <strong>паузируется здесь</strong> — выводит команду resume после одобрения.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--stop">★ CP1 — "Правильный проект? Правильный scope?"</span>
+          </div>
+
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">3</span>
+              <span class="wiki-timeline__title"><code>step3_prefilter()</code> — Удаление мусора</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Алгоритмический фильтр: удаляет offline бизнесы, мёртвые сайты, мусорные домены (.gov, .edu, припаркованные домены). Без API стоимости — детерминированные правила на backend.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--free">Детерминированно, без стоимости</span>
+          </div>
+
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">4</span>
+              <span class="wiki-timeline__title"><code>step4_scrape()</code> — Скрейпинг сайтов</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Качает главную страницу сайта каждой компании для анализа GPT. Может занять 5–15 минут для больших ранов (500+ компаний). Использует <code>api_long()</code> с <code>expected_phase="scraped"</code> и таймаутом 3600 сек — если HTTP-соединение разорвётся посреди скрейпинга, pipeline опрашивает статус рана каждые 30 секунд, пока бэкенд не закончит. Выводит counts scraped/skipped.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--free">httpx, 5–15 мин на 500 компаний</span>
+          </div>
+
+          <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">5</span>
+              <span class="wiki-timeline__title"><code>step5_analyze()</code> — Классификация GPT</span>
+            </div>
+            <div class="wiki-timeline__body">
+              GPT-4o-mini читает сайт каждой компании и классифицирует: наш клиент или нет? Присваивает сегмент (platform/agency) и confidence score. Занимает 10–20 минут на 500 компаний. Использует <code>api_long()</code> с <code>expected_phase="analyzed"</code> и таймаутом 3600 сек — устойчив к разрывам соединения при долгих запусках классификации. <strong>Приоритет резолва промпта:</strong> <code>--prompt-file</code> аргумент → <code>config.prompt_text</code> из БД → ошибка и выход. Выводит target rate (напр. "Targets: 120/500 (24%)"). Backend создаёт gate CP2 со списком всех таргетов — каждый таргет показан с domain, name, segment, confidence. Pipeline паузируется для проверки оператором.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--cheap">GPT-4o-mini ~$0.01–0.05, 10–20 мин</span>
+          </div>
+
+          <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">6</span>
+              <span class="wiki-timeline__title"><code>step6_prepare_verify()</code> — Оценка стоимости</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Подготовка верификации FindyMail. Backend считает: сколько email нужно верифицировать, оценка стоимости (count × $0.01). Создаёт gate CP3. Оператор видит: "Emails to verify: 340. Estimated cost: $3.40" и одобряет перед тем, как будут потрачены деньги.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--expensive">★ CP3 — "Одобрить $X.XX расходов?"</span>
+          </div>
+        </div>
+
+        <h3>Одобрение gate</h3>
+        <p>Одна функция, используется всеми checkpoints. Вызывается после того, как оператор проверит и одобрит в UI:</p>
+<pre><code>def approve_gate(gate_id: int, note: str = "Approved") -> dict:
+    result = api("post", f"/pipeline/gathering/approval-gates/{gate_id}/approve",
+                 json={"decision_note": note})
+    print(f"  Gate #{gate_id} approved → {result.get('new_phase', '?')}")
+    return result</code></pre>
+
+        <h3>Checkpoint Resume Flow</h3>
+        <p>После каждого checkpoint, pipeline паузируется и выводит точную команду для resume:</p>
+<pre><code># Pipeline выводит:
+#   "Pausing at CP1. Approve then: --from-step prefilter --run-id 205"
+#   "Pausing at CP2. Approve then: --from-step verify --run-id 205"
+#   "Pausing at CP3. Approve then: --from-step export --run-id 205"
+
+# Resume логика в main():
+#   Проверяет текущую фазу рана через API
+#   Если "awaiting_scope_ok" → ещё ждёт CP1
+#   Если "gathered" → готово к blacklist check</code></pre>
+
+        <p>После CP2, одобренные таргет-домены добавляются в project blacklist — следующий ран их не найдёт (см. раздел <a href="#code-blacklist-update">Blacklist Update After CP2</a>).</p>
+      </section>
+
+      <section class="wiki-section" id="code-export-import">
+        <h2>Экспорт и импорт — шаги 9–10 <a href="#code-export-import" class="anchor-link">#</a></h2>
+        <h3>Шаг 9 — Экспорт таргет-компаний</h3>
+        <p>Экспортирует все компании, которые прошли классификацию (<code>is_target=true</code>) из БД. Эти компании — основа для поиска людей на следующем шаге. Разбивает по сегментам, сохраняет CSV локально и загружает в Google Sheets.</p>
+<pre><code>def step9_export_targets(config, force=False):
+    # Проверяем кэш первым: state/targets.json
+    # Если существует и --force не установлен → загружаем из кэша, пропускаем SQL
+
+    # Экспорт через docker exec psql:
+    sql = "SELECT domain, name, matched_segment, confidence "
+          "FROM discovered_companies WHERE project_id=X AND is_target=true"
+    # Запускаем: docker exec leadgen-postgres psql -U leadgen -d leadgen -t -A -F "|"
+
+    # Если таргетов не найдено → ошибка + exit (backend pipeline неполный)
+
+    # Per-segment разбивка + CSV + Google Sheets:
+    # Название Sheet: "{code} | Targets | {segment_code} — {date}"
+    # Пример: "ES | Targets | INFLUENCER_PLATFORMS — 2025-01-15"</code></pre>
+        <p><strong>Шаг 10</strong> импортирует контакты из Apollo People CSV экспорта. Маппинг колонок обрабатывает вариации заголовков Apollo CSV:</p>
+        <p><strong>Шаг 10</strong> импортирует контакты из Apollo People CSV. Маппинг колонок обрабатывает вариации заголовков:</p>
+<pre><code>APOLLO_CSV_COLUMNS = {
+    "first_name": ["First Name", "first_name"],
+    "last_name":  ["Last Name", "last_name"],
+    "email":      ["Email", "email", "Email Address"],
+    "title":      ["Title", "title", "Job Title"],
+    "company_name": ["Company", "company", "Company Name", "Organization Name"],
+    "domain":     ["Website", "website", "Company Domain", "domain"],
+    "linkedin_url": ["Person Linkedin Url", "LinkedIn URL", "linkedin_url"],
+    "country":    ["Country", "country", "Person Country"],
+    "employees":  ["# Employees", "employees", "Number of Employees", "Company Size"],
+}</code></pre>
+        <p>Каждый контакт проходит через <code>_map_csv_row()</code>: нормализация домена (<code>_normalize_domain</code> убирает протокол, www, trailing paths), поиск компании в БД таргетов по домену, присвоение сегмента, разрешение country-specific <code>social_proof</code> для персонализации писем.</p>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Дедупликация</div>
+            <div class="wiki-dl__desc">По LinkedIn URL если есть, иначе по составному ключу <code>first_name|last_name|domain</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Правила пропуска</div>
+            <div class="wiki-dl__desc">Контакты без имени или без домена молча пропускаются (подсчитываются и выводятся в отчёте).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Кэширование</div>
+            <div class="wiki-dl__desc">Сохраняется в <code>state/contacts.json</code>. При повторном запуске без <code>--force</code> загружается из кэша.</div>
+          </div>
+        </div>
+
+        <h3>Двух-сегментный импорт CSV</h3>
+        <p>Продакшен-workflow для проектов с двумя отдельными сегментами (напр. platforms + agencies). Оба CSV импортируются в одном запуске и мержатся:</p>
+<pre><code># Двух-сегментный импорт:
+python3 universal_pipeline.py --project-id 42 --from-step people \
+  --apollo-csv platforms_export.csv \
+  --apollo-csv-agencies agencies_export.csv
+
+# Логика pipeline:
+# 1. Импорт --apollo-csv с авто-определённым сегментом "platform"
+# 2. Импорт --apollo-csv-agencies с авто-определённым сегментом "agencies"
+# 3. Оба мержатся в один contacts.json
+# 4. Далее FindyMail + SmartLead (группировка по сегментам)</code></pre>
+        <p>Авто-определение сегмента ищет ключевые слова в slug'ах конфига: <code>"platform"</code> для первого CSV, <code>"agenc"</code> для второго. Каждый контакт получает правильный сегмент и соответствующий social proof.</p>
+      </section>
+
+      <section class="wiki-section" id="code-findymail">
+        <h2>FindyMail — шаг 11 <a href="#code-findymail" class="anchor-link">#</a></h2>
+        <p>Для каждого человека с LinkedIn URL — FindyMail ищет рабочий email. Платим: $0.01 за каждый <strong>найденный</strong> email. Не найден — бесплатно. Результат: два файла — (1) "Verified Emails" — люди с email, готовые для SmartLead; (2) "No Email (LinkedIn only)" — люди без email, можно работать через LinkedIn. Оба сохранены локально и в Google Sheets.</p>
+
+        <h3>find_email() — одиночный запрос</h3>
+<pre><code>async def find_email(client, linkedin_url):
+    r = await client.post(
+        f"{FINDYMAIL_BASE}/api/search/linkedin",
+        headers={"Authorization": f"Bearer {FINDYMAIL_API_KEY}"},
+        json={"linkedin_url": url},
+        timeout=60.0,
+    )
+    if r.status_code == 200:
+        # Извлекаем email из ответа (два возможных места)
+        data = r.json()
+        email = data.get("email") or data.get("contact", {}).get("email")
+        return {"email": email, "verified": ...}
+    elif r.status_code == 402:
+        raise RuntimeError("OUT_OF_CREDITS")  # Останавливаем всё
+    return {"email": "", "verified": False}    # Не найден — бесплатно</code></pre>
+
+        <h3>step11_findymail() — пакетная обработка</h3>
+<pre><code>async def step11_findymail(config, contacts, max_contacts=1500):
+    # 1. Разделяем контакты: уже_с_email vs нужно_обогатить (до max_contacts)
+    # 2. Checkpoint: "Enrich {N} contacts via FindyMail?" — оператор подтверждает
+    # 3. Загружаем прогресс из findymail_progress.json (восстановление после сбоя)
+    # 4. Обрабатываем батчами по 20 с asyncio.Semaphore(5) — 5 параллельно
+    # 5. Сохраняем прогресс после каждого батча из 20
+    # 6. При OUT_OF_CREDITS — немедленная остановка, сохраняем частичные результаты
+    # 7. Разбиваем выход: с_email → "Verified Emails" CSV + Sheet
+    #                  без_email → "No Email (LinkedIn only)" CSV + Sheet
+    # 8. Выводим summary стоимости: "FindyMail cost: $3.50 (350 credits)"</code></pre>
+
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Конкурентность</div>
+            <div class="wiki-dl__desc"><code>asyncio.Semaphore(5)</code> — макс 5 параллельных запросов к FindyMail API (<code>FINDYMAIL_CONCURRENT = 5</code>). Каждый запрос открывает свой <code>httpx.AsyncClient</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Crash safety</div>
+            <div class="wiki-dl__desc">Dict прогресса (<code>linkedin_url → {email, verified}</code>) сохраняется в <code>findymail_progress.json</code> каждые 20 контактов. При resume — уже обработанные URL пропускаются, кредиты не перерасходуются.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Защита кредитов</div>
+            <div class="wiki-dl__desc">При HTTP 402 (кончились кредиты) — <code>RuntimeError("OUT_OF_CREDITS")</code> пробрасывается вверх. Обработка останавливается немедленно. Все частичные результаты сохранены в <code>enriched.json</code>. Без потери данных, без траты кредитов.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Лимит безопасности</div>
+            <div class="wiki-dl__desc"><code>max_contacts=1500</code> (дефолт, переопределяется с <code>--max-findymail</code>). Предотвращает случайное обогащение 10,000 контактов на $100.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Типичный hit rate</div>
+            <div class="wiki-dl__desc">60–80%. Из 500 LinkedIn профилей → ~350–400 верифицированных email. Стоимость: $3.50–4.00.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Выходные файлы</div>
+            <div class="wiki-dl__desc"><code>leads_verified_{date}.csv</code> + Sheet "<code>{code} | Leads | Verified Emails — {date}</code>", <code>leads_no_email_{date}.csv</code> + Sheet "<code>{code} | Leads | No Email (LinkedIn only) — {date}</code>"</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Real-time выход</div>
+            <div class="wiki-dl__desc">Каждый найденный email выводит: <code>✓ John Smith → john@company.com</code>. Ненайденные контакты молчат (только считаются).</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="wiki-section" id="code-smartlead">
+        <h2>SmartLead Upload — шаг 12 <a href="#code-smartlead" class="anchor-link">#</a></h2>
+        <p>Финальный шаг — подготовка и запуск email кампании. Контакты сначала дедупируются по email, затем группируются по сегментам. Одна кампания на сегмент. Каждый подшаг требует подтверждения оператора. Кампания <strong>НИКОГДА не активируется автоматически</strong> — оператор проверяет всё в SmartLead UI и нажимает кнопку сам.</p>
+
+        <h3>Pre-processing</h3>
+<pre><code># 1. Дедуп контактов по email (lowercase)
+# 2. Группировка по сегменту: {"INFLUENCER_PLATFORMS": [...], "IM_FIRST_AGENCIES": [...]}
+# 3. Загрузка upload_log.json — отслеживает какие кампании уже созданы (идемпотентно)
+# 4. Обработка каждого сегмента отдельно с полным checkpoint flow</code></pre>
+
+        <div class="wiki-timeline">
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12a</span>
+              <span class="wiki-timeline__title">Валидация social proof</span>
+            </div>
+            <div class="wiki-timeline__body">
+              <code>_show_social_proof_stats()</code> выводит: (1) распределение social_proof — сколько лидов на каждый social proof текст, (2) топ 8 стран по count. Пример: <code>"187 leads: 50 UK (trusted by 200+ UK agencies), 40 India (used by Flipkart, Nykaa)..."</code>. Оператор подтверждает, что персонализация выглядит правильно перед загрузкой. Если оператор пропустит — весь сегмент пропускается.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12b</span>
+              <span class="wiki-timeline__title">Создание кампании</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Имя кампании из шаблона: <code>c-{project}_{segment} {geo} #C</code>. Гео авто-определяется: >3 стран → "ALL GEO". ID кампании сохраняется в <code>upload_log.json</code> — при перезапуске, если кампания уже существует, переиспользуется ID (идемпотентно). API: <code>POST /campaigns/create</code>.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12c</span>
+              <span class="wiki-timeline__title">Привязка email-аккаунтов</span>
+            </div>
+            <div class="wiki-timeline__body">Запускает <code>validate_email_accounts()</code> — проверяет каждый SmartLead аккаунт через API. Удаляет неактивные, при ошибке API оставляет (безопасный дефолт: никогда не удаляем без подтверждения). Затем <code>POST /campaigns/{id}/email-accounts</code> с ID активных аккаунтов.</div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12d</span>
+              <span class="wiki-timeline__title">Загрузка лидов</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Каждый лид включает: email, first_name, last_name, company_name (нормализованная), linkedin_profile, и custom_fields: {social_proof, title, country, segment}. Загружаются батчами по 100 через <code>POST /campaigns/{id}/leads</code>. 1-секундная задержка между батчами. При HTTP 429 (rate limit) — 70-секундная пауза + повтор. Каждый батч выводит: uploaded, blocked, duplicate counts. Итоговый total сравнивается с входными данными.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12e</span>
+              <span class="wiki-timeline__title">Загрузка секвенций</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Загружаются через <code>get_sequences()</code> — markdown файл сначала, GOD_SEQUENCE как фоллбэк. Группирует email шаги по A/B вариантам. Загружает все шаги сразу через <code>POST /campaigns/{id}/sequences</code>. <strong>Ограничение API:</strong> SmartLead API поддерживает только один вариант на шаг — загружается только вариант A. B варианты помечаются: <code>"⚠ Step {N} B variant — add manually in SmartLead UI"</code> с выводом subject line для простоты copy-paste. Загрузка отслеживается в <code>upload_log.json</code>.
+            </div>
+          </div>
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">12f</span>
+              <span class="wiki-timeline__title">Расписание + НИКОГДА авто-активация</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Расписание из <code>config.schedule</code> (загружено из БД): дни недели, start/end час, таймзона, интервал между письмами. Применяется через <code>POST /campaigns/{id}/schedule</code>. Кампания остаётся в статусе <strong>DRAFTED</strong>. Скрипт НИКОГДА не активирует кампанию. Это делает оператор вручную в SmartLead UI после финального обзора всех настроек. Финальное сообщение: <code>"✓ Campaign '{name}' ready in DRAFTED status. → Activate manually in SmartLead UI."</code>
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--stop">Оператор активирует вручную</span>
+          </div>
+        </div>
+
+        <h3>Финальный summary</h3>
+        <p>После обработки всех сегментов, выводит таблицу summary:</p>
+<pre><code># SUMMARY
+#   c-EasyStaff_Platforms ALL GEO #C: 187 leads, sequences=✅
+#   c-EasyStaff_Agencies MENA #C:      42 leads, sequences=✅</code></pre>
+
+        <h3>Step Timing (задержки между письмами)</h3>
+        <p>Каждый email шаг имеет настроенную задержку в днях перед отправкой:</p>
+<pre><code>TIMING = [0, 4, 4, 6, 7]
+# Шаг 1: отправить немедленно (день 0)
+# Шаг 2: 4 дня после шага 1
+# Шаг 3: 4 дня после шага 2
+# Шаг 4: 6 дней после шага 3
+# Шаг 5: 7 дней после шага 4
+# Общий span секвенции: ~21 день</code></pre>
+
+        <h3>Rate Limit Handling</h3>
+        <p>SmartLead API rate-лимитирует загрузку лидов. Pipeline обрабатывает автоматически:</p>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Размер батча</div>
+            <div class="wiki-dl__desc">100 лидов за API вызов. 1-секундная задержка между батчами.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">HTTP 429</div>
+            <div class="wiki-dl__desc">При rate limit — 70-секундная пауза, затем повтор того же батча один раз.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Отчётность</div>
+            <div class="wiki-dl__desc">Каждый батч выводит uploaded/blocked/duplicate counts. Финальный total сравнивается с входными данными.</div>
+          </div>
+        </div>
+
+        <h3>Sequence Loading Priority</h3>
+<pre><code>def get_sequences(config, segment_slug):
+    # Приоритет 1: markdown файл (написанный человеком)
+    #   Парсится через regex: ## Email {label}\n\n**Subject:** ...\n\n{body}
+    #   Путь файла из конфига сегмента: segment.sequence_file
+    # Приоритет 2: GOD_SEQUENCE (авто-генерация через GPT-4o)
+    #   Сгенерировано → оператор проверяет → сохраняется как markdown для повторного использования</code></pre>
+      </section>
+
+      <section class="wiki-section" id="code-god-sequence">
+        <h2>GOD_SEQUENCE <a href="#code-god-sequence" class="anchor-link">#</a></h2>
+        <p>Авто-генерация 5-шаговых email-секвенций через GPT-4o. Фоллбэк, когда нет написанного человеком markdown-файла.</p>
+<pre><code>def get_sequences(config, segment_slug):
+    # Приоритет 1: markdown файл (написанный человеком)
+    steps = load_sequences_from_file(config, segment_slug)
+    if steps: return steps
+
+    # Приоритет 2: GOD_SEQUENCE (авто-генерация)
+    steps = god_sequence(config, segment_slug)
+    if steps and _checkpoint("Проверьте сгенерированную секвенцию. Одобрить?"):
+        # Сохраняет как markdown для повторного использования
+        return steps</code></pre>
+        <h3>Context Loading из project_knowledge</h3>
+        <p>Перед генерацией загружает 3 типа контекста из БД через backend API:</p>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">ICP Context</div>
+            <div class="wiki-dl__desc"><code>GET /projects/{id}/knowledge/icp</code> — кто идеальный клиент, какие pain points, какая индустрия/размер/география.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Product Context</div>
+            <div class="wiki-dl__desc"><code>GET /projects/{id}/knowledge/notes</code> — что мы продаём, ключевые фичи, дифференциаторы, value props.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Outreach Style</div>
+            <div class="wiki-dl__desc"><code>GET /projects/{id}/knowledge/outreach</code> — тон коммуникации, стиль предыдущих писем, что работало раньше.</div>
+          </div>
+        </div>
+
+        <h3>GPT-4o Prompt Rules</h3>
+        <p>Промпт включает весь контекст выше + данные сегмента (display name, description, target titles, social proof variable) + строгие правила:</p>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Length</div>
+            <div class="wiki-dl__desc">50–75 слов на письмо (оптимум для engagement в холодных письмах).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Structure</div>
+            <div class="wiki-dl__desc">Email 1: JTBD вопрос (какую работу нужно выполнить prospect-у?). Email 2: case study или конкретное предложение. Email 3: новый угол (stat + social proof). Email 4: конкурентная дифференциация. Email 5: break-up + redirect к правильному человеку.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">A/B Testing</div>
+            <div class="wiki-dl__desc">Шаги 1–2: создаём A и B варианты (тестируем разные углы). Шаги 3–5: один вариант.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Style</div>
+            <div class="wiki-dl__desc">Pain-based messaging, НЕ feature-dump. Plain text только, без HTML, без ссылок кроме calendar link в письме 4.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Variables</div>
+            <div class="wiki-dl__desc"><code>{{first_name}}</code>, <code>{{company_name}}</code>, <code>{{social_proof}}</code> — SmartLead заменяет на конкретного получателя.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Output</div>
+            <div class="wiki-dl__desc">JSON array: 7 items (1A, 1B, 2A, 2B, 3, 4, 5) — каждый с label, subject, body.</div>
+          </div>
+        </div>
+
+        <h3>load_sequences_from_file() — Markdown Parser</h3>
+        <p>Парсит написанные человеком markdown файлы (выше приоритет чем GOD_SEQUENCE). Regex pattern:</p>
+<pre><code># Pattern: ## Email {label} ...\n\n**Subject:** {subject}\n\n{body}
+pattern = r'## Email (\d+[AB]?) .+?\n\n\*\*Subject:\*\* (.+?)\n\n(.*?)(?=\n---|\n## |\Z)'
+# Ищет по нескольким base paths: repo root, SOFIA_DIR, текущая директория
+# Путь файла из конфига сегмента: segment.sequence_file</code></pre>
+        <p>Сгенерированные секвенции сохраняются как markdown для редактирования человеком перед следующим использованием: <code>generated_sequence_{segment}_{date}.md</code>. Оператор всегда проверяет перед загрузкой — никогда не загружается автоматически. GPT-4o вызов запускается через <code>docker exec</code> против backend контейнера OpenAI client.</p>
+      </section>
+
+      <section class="wiki-section" id="code-modes">
+        <h2>Режимы ввода <a href="#code-modes" class="anchor-link">#</a></h2>
+        <p>Четыре способа подать фильтры в pipeline. Фильтры определяют какие компании будут искать Clay/Apollo. Каждый режим производит одинаковый выход: <code>{segment, filters}</code> dict.</p>
+
+        <h3>Режим 1: Natural (<code>--mode natural</code>)</h3>
+        <p>Claude генерирует фильтры в диалоге с оператором, передаёт результат как <code>--filters</code> JSON. Свободное описание ICP → структурированный запрос. Сегмент авто-определяется из контента фильтров (ключевые слова "agency"/"agencies" → IM_FIRST_AGENCIES, иначе INFLUENCER_PLATFORMS).</p>
+<pre><code>python3 universal_pipeline.py --project-id 42 --mode natural \
+  --input "SaaS companies in MENA with 50-500 employees" \
+  --filters '{"country_names": ["UAE", "Saudi Arabia"], "max_results": 3000}'</code></pre>
+
+        <h3>Режим 2: Structured (<code>--mode structured</code>)</h3>
+        <p>Использует <code>default_filters</code> из конфига сегмента в БД. Самый частый для повторных ранов. Требует <code>--segment</code> slug. Если сегмент не найден — выводит доступные slugs и выходит.</p>
+<pre><code>python3 universal_pipeline.py --project-id 42 --mode structured --segment influencer_platforms</code></pre>
+
+        <h3>Режим 3: Lookalike (<code>--mode lookalike</code>)</h3>
+        <p>Даёте примеры хороших клиентов (домены) → система анализирует их общие черты → генерирует фильтры для поиска похожих компаний. Пример: "find companies similar to impact.com and modash.io".</p>
+<pre><code>python3 universal_pipeline.py --project-id 42 --mode lookalike \
+  --examples "impact.com,modash.io,grin.co"</code></pre>
+        <p>Как это работает изнутри:</p>
+<pre><code>def mode3_lookalike(config, examples):
+    # 1. SQL запрос через docker exec psql:
+    #    SELECT domain, name, matched_segment, country, employee_count
+    #    FROM discovered_companies WHERE project_id=X AND lower(domain) IN (...)
+    #
+    # 2. Репорт missing: "⚠ Not in DB: somecompany.io" (не все примеры могут быть в БД)
+    #
+    # 3. Извлекаем паттерны из найденных компаний:
+    #    - Доминирующий сегмент: Counter(segments).most_common(1)
+    #    - Топ 5 стран: Counter(countries).most_common(5)
+    #    - Диапазон сотрудников: min(employees)/2 → max(employees)*2
+    #       (удваиваем диапазон чтобы поймать похожий размер)
+    #
+    # 4. Строим ICP текст:
+    #    "Companies similar to: Impact, Modash, GRIN.
+    #     Find companies in the same space — similar products, services, size.
+    #     Industry focus: influencer platforms."
+    #
+    # 5. Дефолт индустрии: Computer Software, Internet,
+    #    Marketing and Advertising, IT Services, Online Media
+    #
+    # 6. Возвращаем {segment, filters} с авто-определёнными констрейнтами</code></pre>
+
+        <h3>Режим 4: Expand (<code>--mode expand</code>)</h3>
+        <p>Берёт фильтры предыдущего рана и запускает с модификациями. Пример: "тот же поиск что в ране #198, но для Singapore вместо Dubai". Удобно для масштабирования успешных поисков на новые географии.</p>
+<pre><code>python3 universal_pipeline.py --project-id 42 --mode expand --base-run 198 \
+  --override '{"country_names": ["Singapore", "Thailand"]}'</code></pre>
+<pre><code>def mode4_expand(base_run_id, overrides):
+    # 1. GET /pipeline/gathering/runs/{base_run_id} → base_filters, notes
+    # 2. Merge: {**base_filters, **overrides} — overrides побеждают
+    # 3. Авто-определение сегмента из notes/ICP текста:
+    #    "agencies" в notes → IM_FIRST_AGENCIES
+    #    иначе → INFLUENCER_PLATFORMS
+    # 4. Выводим: base notes + overrides JSON</code></pre>
+
+        <h3>Filter Resolution в main()</h3>
+        <p>Запускается только когда "start" есть в списке шагов (т.е. pipeline начинается с начала). Каждый режим валидирует свои обязательные аргументы и выходит с ошибкой если их нет:</p>
+<pre><code># Резолва режима в main():
+if mode == "natural":    требует --filters JSON
+if mode == "structured": требует --segment (валидируется против БД)
+if mode == "lookalike":  требует --examples
+if mode == "expand":     требует --base-run
+
+# Результат: mode_config = {"segment": "INFLUENCER_PLATFORMS", "filters": {...}}
+# Передаётся в step0_start()</code></pre>
+      </section>
+
+      <section class="wiki-section" id="code-utilities">
+        <h2>Утилиты и хелперы <a href="#code-utilities" class="anchor-link">#</a></h2>
+        <p>Инфраструктурные функции, на которых держится весь pipeline. Не привязаны к конкретному шагу — используются повсюду.</p>
+
+        <h3>api() — Общение с бэкендом</h3>
+        <p>Единая функция для всех API-вызовов к бэкенду. Обработка ошибок и fail-fast при HTTP 4xx/5xx.</p>
+<pre><code>def api(method: str, path: str, raise_on_error: bool = True, **kwargs) -> dict:
+    url = f"{BACKEND_BASE}/api{path}"
+    r = getattr(httpx, method)(url, headers=BACKEND_HEADERS, timeout=300, **kwargs)
+    if r.status_code >= 400:
+        if raise_on_error:
+            print(f"  API ERROR {r.status_code}: {r.text[:500]}")
+            sys.exit(1)
+        return {"_error": r.status_code, "_detail": r.text[:500]}
+    return r.json()</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>raise_on_error=True</code></div>
+            <div class="wiki-dl__desc">Поведение по умолчанию: печатает ошибку и <code>sys.exit(1)</code>. Pipeline останавливается немедленно при любом сбое API.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>raise_on_error=False</code></div>
+            <div class="wiki-dl__desc">Возвращает dict <code>{"_error": status_code}</code>. Используется для опциональных запросов (конфиг SmartLead, промпты), где отсутствие данных не фатально.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Заголовки</div>
+            <div class="wiki-dl__desc"><code>X-Company-ID: 1</code> + <code>Content-Type: application/json</code>. Все запросы идут через бэкенд на <code>localhost:8000</code>.</div>
+          </div>
+        </div>
+
+        <h3>api_long() — Устойчивые вызовы долгих операций</h3>
+        <p>Обёртка для API-операций, которые занимают минуты (scrape, analyze). Проблема: скрейпинг 500 сайтов занимает 5–15 минут, анализ 500 компаний — 10–20 минут. За это время HTTP-соединение может разорваться (timeout, перезапуск бэкенда, проблемы с сетью). Но бэкенд сохраняет результаты в базу данных инкрементально — данные не теряются. Решение: если соединение упало — не паникуем, а опрашиваем статус рана каждые 30 секунд, пока фаза не продвинется.</p>
+<pre><code>def api_long(method: str, path: str, expected_phase: str, run_id: int,
+             timeout: int = 3600, poll_interval: int = 30, **kwargs) -> dict:
+    url = f"{BACKEND_BASE}/api{path}"
+    try:
+        r = getattr(httpx, method)(url, headers=BACKEND_HEADERS, timeout=timeout, **kwargs)
+        if r.status_code >= 400:
+            return {"_error": r.status_code, "_detail": r.text[:500]}
+        return r.json()
+    except (httpx.ReadTimeout, httpx.RemoteProtocolError,
+            httpx.ConnectError, httpx.ReadError) as e:
+        print(f"  Connection lost ({type(e).__name__}). Backend may still be working...")
+        print(f"  Polling until phase reaches '{expected_phase}'...")
+
+        start = time.time()
+        while time.time() - start < timeout:
+            time.sleep(poll_interval)
+            try:
+                r2 = httpx.get(f"{BACKEND_BASE}/api/pipeline/gathering/runs/{run_id}",
+                               headers=BACKEND_HEADERS, timeout=30)
+                if r2.status_code == 200:
+                    phase = r2.json().get("current_phase", "")
+                    elapsed = int(time.time() - start)
+                    print(f"  [{elapsed}s] Phase: {phase}")
+                    if phase == expected_phase or phase.startswith("awaiting_"):
+                        print(f"  Backend finished — phase is now '{phase}'")
+                        return r2.json()
+            except Exception:
+                print(f"  [{int(time.time()-start)}s] Backend unreachable, waiting...")
+
+        print(f"  Timeout after {timeout}s. Check manually.")
+        return {"_timeout": True}</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>expected_phase</code></div>
+            <div class="wiki-dl__desc">Фаза, которую ран должен достичь ПОСЛЕ завершения операции. Для scrape: <code>"scraped"</code>. Для analyze: <code>"analyzed"</code>. Polling останавливается, когда обнаружена эта фаза (или любая <code>awaiting_*</code>).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Обрабатываемые ошибки</div>
+            <div class="wiki-dl__desc"><code>httpx.ReadTimeout</code>, <code>httpx.RemoteProtocolError</code>, <code>httpx.ConnectError</code>, <code>httpx.ReadError</code>. Любая из них запускает fallback с polling вместо краша.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Таймаут</div>
+            <div class="wiki-dl__desc">По умолчанию 3600 секунд (1 час). Если ожидаемая фаза не достигнута за это время, возвращает <code>{"_timeout": True}</code> — оператор должен проверить вручную.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Интервал опроса</div>
+            <div class="wiki-dl__desc">Каждые 30 секунд по умолчанию. Каждый опрос печатает прошедшее время и текущую фазу для прозрачности.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Почему не просто retry?</div>
+            <div class="wiki-dl__desc">Повторный POST перезапустил бы операцию на бэкенде (дублирование работы). Polling GET-эндпоинта статуса безопасен — он read-only и показывает, закончил ли бэкенд работу сам.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Используется в</div>
+            <div class="wiki-dl__desc"><code>step4_scrape()</code> и <code>step5_analyze()</code> — обе функции заменили <code>api()</code> на <code>api_long()</code> для устойчивости к разрывам соединения при долгих операциях.</div>
+          </div>
+        </div>
+
+        <h3>Управление состоянием — Crash Recovery</h3>
+        <p>Pipeline можно остановить и возобновить с любого шага. Состояние сохраняется как JSON-файлы в директории <code>state/</code> проекта.</p>
+<pre><code>def save_state(state_dir, run_id, phase, gate_id=None, config_key=""):
+    save_json(state_dir / "run_state.json",
+              {"run_id": run_id, "phase": phase, "gate_id": gate_id,
+               "config_key": config_key, "updated_at": ts()})
+
+def load_state(state_dir) -> dict:
+    return load_json(state_dir / "run_state.json") or {}</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Файлы состояния</div>
+            <div class="wiki-dl__desc"><code>run_state.json</code> (текущий ран/фаза), <code>targets.json</code> (кэш экспорта), <code>contacts.json</code> (импортированные контакты), <code>enriched.json</code> (после FindyMail), <code>findymail_progress.json</code> (частичный прогресс), <code>upload_log.json</code> (ID кампаний SmartLead)</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Логика резюме</div>
+            <div class="wiki-dl__desc">Каждый шаг проверяет наличие кэш-файла. Если есть — загружает из кэша и пропускает. Флаг <code>--force</code> перезаписывает кэш.</div>
+          </div>
+        </div>
+
+        <h3>_checkpoint() — Подтверждение оператора</h3>
+        <p>Каждая критическая точка принятия решений требует подтверждения человека. Pipeline никогда не проходит checkpoint автоматически.</p>
+<pre><code>def _checkpoint(message: str) -> bool:
+    print(f"\n  ★ CHECKPOINT: {message}")
+    if sys.stdin.isatty():
+        print("  [Enter] to continue, [s] to skip, [Ctrl+C] to abort.")
+        resp = input("  > ").strip().lower()
+        return resp != "s"
+    else:
+        print("  Non-interactive mode — proceeding.")
+        return True</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Интерактивный</div>
+            <div class="wiki-dl__desc">Оператор видит сообщение и может: <strong>Enter</strong> (продолжить), <strong>s</strong> (пропустить этот шаг), <strong>Ctrl+C</strong> (прервать pipeline).</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Неинтерактивный</div>
+            <div class="wiki-dl__desc">Когда stdin не TTY (например, из cron) — продолжает автоматически. Используется только для тестов — продакшен всегда интерактивный.</div>
+          </div>
+        </div>
+
+        <h3>Загрузка в Google Sheets</h3>
+        <p>Каждый CSV-экспорт автоматически загружается в Google Sheets для удобного шеринга с командой. Формат имени: <code>[PROJECT] | [TYPE] | [SEGMENT] — [DATE]</code>.</p>
+<pre><code>def save_csv(path, rows, sheet_name=None):
+    # 1. Сохраняет CSV локально через DictWriter
+    # 2. Если sheet_name указан → загрузка в Google Sheets через бэкенд
+    #    docker exec → google_sheets_service.create_and_populate()
+    #    Автошеринг с командой (pn@getsally.io)
+    #    Печатает URL на успех</code></pre>
+
+        <h3>Нормализация доменов и компаний</h3>
+<pre><code>def normalize_company(name):
+    # Убирает: Inc., LLC, Ltd., GmbH, AG, S.A., B.V., Pty
+    # "Modash Inc." → "Modash"
+
+def _normalize_domain(raw):
+    # Убирает: https://, http://, www., trailing /
+    # "https://www.impact.com/pricing" → "impact.com"</code></pre>
+
+        <h3>Остальные хелперы</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>get_latest_prompt(project_id)</code></div>
+            <div class="wiki-dl__desc">Загружает последний активный промпт классификации из API <code>gathering_prompts</code>. Возвращает <code>(prompt_id, prompt_text)</code>. Сортирует по ID, берёт максимальный. Показывает количество использований и средний target rate.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>load_json(path)</code> / <code>save_json(path, data)</code></div>
+            <div class="wiki-dl__desc">JSON I/O с кодировкой UTF-8 и <code>ensure_ascii=False</code>. <code>load_json</code> возвращает <code>None</code> если файл не существует — без исключений.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>ts()</code> / <code>tag()</code></div>
+            <div class="wiki-dl__desc"><code>ts()</code> → <code>"2025-01-15 14:30:00"</code> (для логов). <code>tag()</code> → <code>"2025-01-15"</code> (для имён файлов и Google Sheet).</div>
+          </div>
+        </div>
+
+        <h3>Переменные окружения</h3>
+<pre><code># Обязательные — устанавливать через: set -a && source .env && set +a
+APOLLO_API_KEY      # Apollo People search API
+FINDYMAIL_API_KEY   # FindyMail обогащение email ($0.01/найденный)
+SMARTLEAD_API_KEY   # SmartLead управление кампаниями
+BACKEND_BASE        # URL бэкенда (по умолчанию: http://localhost:8000)
+OPENAI_API_KEY      # Для GOD_SEQUENCE — генерация через GPT-4o</code></pre>
+      </section>
+
+      <section class="wiki-section" id="code-blacklist-update">
+        <h2>Обновление блэклиста после CP2 <a href="#code-blacklist-update" class="anchor-link">#</a></h2>
+        <p>После одобрения таргетов оператором на Checkpoint 2, их домены немедленно добавляются в <code>project_blacklist</code>. Это предотвращает повторное обнаружение тех же компаний при следующем запуске. <strong>Важный нюанс:</strong> «блэклист» здесь означает все компании, которые уже прошли сбор и обработку — не только те, кому фактически отправили письма. Цель — избежать повторной обработки, а не пометить компании как «плохие».</p>
+<pre><code>def blacklist_approved_targets(config, run_id):
+    # 1. SQL: SELECT DISTINCT domain FROM discovered_companies
+    #    WHERE gathering_run_id = {run_id} AND is_target = true
+    # 2. INSERT INTO project_blacklist (project_id, domain, reason, source)
+    #    VALUES ... ON CONFLICT DO NOTHING
+    # reason = 'target_approved_run_{run_id}'
+    # source = 'pipeline'</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Когда вызывается</div>
+            <div class="wiki-dl__desc">Автоматически после одобрения CP2, перед <code>step6_prepare_verify()</code>. Часть шага "verify" в pipeline flow.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Зачем это нужно</div>
+            <div class="wiki-dl__desc">Без этого повторный запуск pipeline для того же проекта заново найдёт уже одобренные компании — потратит кредиты Clay/Apollo и создаст дубликаты.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">ON CONFLICT DO NOTHING</div>
+            <div class="wiki-dl__desc">Безопасно запускать многократно. Если домен уже в блэклисте — без ошибки, без дубликата.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Выполнение</div>
+            <div class="wiki-dl__desc">Напрямую через <code>docker exec</code> к PostgreSQL — без обёртки бэкенд API для этой операции.</div>
+          </div>
+        </div>
+        <p>Поток в контексте:</p>
+        <div class="wiki-state-flow">
+          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP2 одобрен</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge">blacklist_approved_targets()</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge">step6_prepare_verify()</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP3</span>
+        </div>
+      </section>
+
+      <section class="wiki-section" id="code-batching">
+        <h2>Батчинг и авто-pipeline <a href="#code-batching" class="anchor-link">#</a></h2>
+        <p>Бэкенд не может надёжно обработать scrape/analyze 3000+ компаний одним запросом — соединения рвутся, память растёт, ошибки каскадируются. Система батчинга разбивает большие списки доменов на раны по 500 и проводит каждый ран через полный pipeline автоматически, без участия оператора на checkpoint'ах.</p>
+
+        <h3>Константа BATCH_SIZE</h3>
+<pre><code>BATCH_SIZE = 500  # Max domains per gathering run (for scrape stability)</code></pre>
+        <p>Если список доменов ≤ 500, создаётся один ран. Если больше — список разбивается на чанки по 500, каждый становится отдельным gathering run. Все раны делят один проект и попадают в общую БД — результаты объединяются.</p>
+
+        <h3>create_batched_runs() — Разбивка доменов на раны</h3>
+<pre><code>def create_batched_runs(config: ProjectConfig, domains: list[str],
+                        mode: str, notes_prefix: str = "") -> list[int]:
+    """Create multiple gathering runs if domains > BATCH_SIZE.
+    Returns list of run IDs."""
+    if len(domains) <= BATCH_SIZE:
+        batches = [domains]
+    else:
+        batches = [domains[i:i+BATCH_SIZE]
+                   for i in range(0, len(domains), BATCH_SIZE)]
+        print(f"\n  Splitting {len(domains)} domains into {len(batches)} batches of ~{BATCH_SIZE}")
+
+    run_ids = []
+    for i, batch in enumerate(batches):
+        batch_label = f" (batch {i+1}/{len(batches)})" if len(batches) > 1 else ""
+        result = api("post", "/pipeline/gathering/start", json={
+            "project_id": config.project_id,
+            "source_type": "manual.companies.manual",
+            "filters": {"domains": batch},
+            "triggered_by": "operator",
+            "input_mode": mode,
+            "notes": f"{notes_prefix}{batch_label} — {len(batch)} domains",
+        })
+        run_id = result["id"]
+        run_ids.append(run_id)
+        print(f"  Run #{run_id}: {len(batch)} domains{batch_label}")
+
+    return run_ids</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Source type</div>
+            <div class="wiki-dl__desc"><code>manual.companies.manual</code> — домены передаются напрямую (без поиска Clay/Apollo). Используется для повторной обработки известных доменов или expand mode.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Notes</div>
+            <div class="wiki-dl__desc">Каждый ран получает описательную заметку с номером батча и количеством доменов для лёгкой идентификации в UI.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Возвращает</div>
+            <div class="wiki-dl__desc">Список <code>run_id</code> (целые числа). Вызывающий код итерирует по ним и вызывает <code>process_run_pipeline()</code> для каждого.</div>
+          </div>
+        </div>
+
+        <h3>process_run_pipeline() — Полный авто-pipeline на ран</h3>
+        <p>Проводит один ран через весь pipeline автоматически: gather → blacklist → prefilter → scrape → analyze → approve → blacklist. Без checkpoint'ов — все gate'ы авто-одобряются. Использует <code>api_long()</code> для scrape и analyze, чтобы обрабатывать разрывы соединения без краша.</p>
+<pre><code>def process_run_pipeline(config: ProjectConfig, run_id: int,
+                         prompt_text: str = None, skip_gather_wait: bool = False):
+    # 1. Ждём завершения фазы gather (poll каждые 10 сек, до 10 мин)
+    if not skip_gather_wait:
+        for i in range(60):
+            time.sleep(10)
+            phase = api("get", f"/pipeline/gathering/runs/{run_id}").get("current_phase")
+            if phase != "gather": break
+
+    # 2. Проверяем текущую фазу — пропускаем уже пройденные шаги
+    phase = api("get", f"/pipeline/gathering/runs/{run_id}").get("current_phase")
+
+    # 3. Blacklist check + авто-одобрение CP1
+    if phase == "gathered":
+        api("post", f"/pipeline/gathering/runs/{run_id}/blacklist-check")
+        approve_pending_gate(config, run_id)
+
+    # 4. Pre-filter (убираем мусорные домены)
+    if phase == "scope_approved":
+        api("post", f"/pipeline/gathering/runs/{run_id}/pre-filter")
+
+    # 5. Scrape — устойчив через api_long()
+    if phase == "filtered":
+        step4_scrape(run_id)
+
+    # 6. Analyze — устойчив через api_long(), использует prompt_text
+    if phase == "scraped":
+        api_long("post", f"/pipeline/gathering/runs/{run_id}/analyze",
+                 expected_phase="analyzed", run_id=run_id, timeout=3600,
+                 params={"prompt_text": prompt_text, "model": "gpt-4o-mini"})
+
+    # 7. Авто-одобрение таргетов (CP2) + добавление в blacklist
+    approve_pending_gate(config, run_id)
+    blacklist_approved_targets(config, run_id)</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Phase-aware</div>
+            <div class="wiki-dl__desc">На каждом шаге функция проверяет текущую фазу через API. Если ран был прерван и возобновлён — продолжает с того места, где остановился, не повторяя пройденные шаги.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Авто-одобрение</div>
+            <div class="wiki-dl__desc">Все gate'ы (CP1, CP2) авто-одобряются через <code>approve_pending_gate()</code>. Безопасно для батчей, потому что оператор уже одобрил общий список доменов до начала батчинга.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Устойчивость</div>
+            <div class="wiki-dl__desc">Scrape и analyze используют <code>api_long()</code> — если соединение с бэкендом упадёт посреди 15-минутного скрейпинга, pipeline ждёт через polling вместо краша.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>skip_gather_wait</code></div>
+            <div class="wiki-dl__desc">Если <code>True</code> — пропускает ожидание фазы gather. Используется, когда домены переданы через manual source (мгновенная дедупликация, без задержки Clay).</div>
+          </div>
+        </div>
+
+        <h3>approve_pending_gate() — Авто-одобрение checkpoint</h3>
+<pre><code>def approve_pending_gate(config: ProjectConfig, run_id: int) -> bool:
+    """Find and approve pending gate for this run."""
+    gates = api("get",
+        f"/pipeline/gathering/approval-gates?project_id={config.project_id}",
+        raise_on_error=False)
+    items = gates if isinstance(gates, list) else gates.get("items", [])
+    for g in items:
+        if g.get("gathering_run_id") == run_id and g.get("status") == "pending":
+            api("post", f"/pipeline/gathering/approval-gates/{g['id']}/approve",
+                json={}, raise_on_error=False)
+            print(f"  Gate #{g['id']} approved")
+            return True
+    return False</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Как работает</div>
+            <div class="wiki-dl__desc">Запрашивает все approval gate'ы проекта, находит тот, который соответствует этому <code>run_id</code> со статусом <code>"pending"</code>, и одобряет автоматически.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Отличие от <code>approve_gate()</code></div>
+            <div class="wiki-dl__desc"><code>approve_gate(gate_id)</code> требует известный gate ID (для интерактивного режима). <code>approve_pending_gate(run_id)</code> находит gate автоматически — для batch/auto режима.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Обработка ошибок</div>
+            <div class="wiki-dl__desc">Использует <code>raise_on_error=False</code> и try/except — если pending gate не существует, возвращает <code>False</code> молча. Безопасно вызывать на любой стадии pipeline.</div>
+          </div>
+        </div>
+
+        <h3>Поток батч-pipeline</h3>
+        <p>Полный поток для обработки 2000 доменов:</p>
+        <div class="wiki-state-flow">
+          <span class="wiki-state-flow__badge">2000 доменов</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge">create_batched_runs()</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge">4 рана × 500</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge">process_run_pipeline() каждый</span>
+          <span class="wiki-state-flow__arrow">→</span>
+          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">Всё в общей БД</span>
+        </div>
+      </section>
+
+      <section class="wiki-section" id="code-cli">
+        <h2>CLI-справочник <a href="#code-cli" class="anchor-link">#</a></h2>
+        <p>Полный справочник всех аргументов командной строки. Pipeline управляется исключительно через CLI-флаги.</p>
+
+        <h3>Обязательные аргументы</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--project-id</code></div>
+            <div class="wiki-dl__desc">ID проекта из базы данных (целое число). Обязателен для каждого запуска. Пример: <code>--project-id 42</code></div>
+          </div>
+        </div>
+
+        <h3>Выбор режима</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--mode</code></div>
+            <div class="wiki-dl__desc">Режим ввода: <code>natural</code>, <code>structured</code> (по умолч.), <code>lookalike</code>, <code>expand</code>. Определяет как генерируются фильтры.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--segment</code></div>
+            <div class="wiki-dl__desc">Slug сегмента для structured режима. Должен совпадать со slug в <code>kb_segments</code> БД. Пример: <code>--segment influencer_platforms</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--input</code></div>
+            <div class="wiki-dl__desc">Описание на естественном языке для natural режима. Пример: <code>--input "SaaS companies in MENA with 50-500 employees"</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--filters</code></div>
+            <div class="wiki-dl__desc">JSON-фильтры для natural режима (генерирует Claude в диалоге). Пример: <code>--filters '{"country_names": ["UAE"], "max_results": 3000}'</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--examples</code></div>
+            <div class="wiki-dl__desc">Домены через запятую для lookalike режима. Пример: <code>--examples "impact.com,modash.io,grin.co"</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--base-run</code></div>
+            <div class="wiki-dl__desc">ID рана для клонирования в expand режиме. Пример: <code>--base-run 198</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--override</code></div>
+            <div class="wiki-dl__desc">JSON-переопределения для expand режима. Мержатся поверх фильтров базового рана. Пример: <code>--override '{"country_names": ["Singapore"]}'</code></div>
+          </div>
+        </div>
+
+        <h3>Управление потоком</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--from-step</code></div>
+            <div class="wiki-dl__desc">Запустить pipeline с определённого шага. Пропускает всё до него. Значения: <code>start</code>, <code>blacklist</code>, <code>prefilter</code>, <code>scrape</code>, <code>analyze</code>, <code>verify</code>, <code>export</code>, <code>people</code>, <code>findymail</code>, <code>upload</code></div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--run-id</code></div>
+            <div class="wiki-dl__desc">Возобновить существующий gathering run по ID. Если не указан — загружается из <code>run_state.json</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--dry-run</code></div>
+            <div class="wiki-dl__desc">Режим превью — печатает фильтры, сегмент, страны и шаги, которые выполнились бы. Никаких API-вызовов.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--force</code></div>
+            <div class="wiki-dl__desc">Игнорировать кэш-файлы (targets.json, contacts.json, enriched.json). Принудительное выполнение каждого шага заново.</div>
+          </div>
+        </div>
+
+        <h3>Импорт данных</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--apollo-csv</code></div>
+            <div class="wiki-dl__desc">Путь к CSV-экспорту Apollo People. Обязателен для <code>--from-step people</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--apollo-csv-agencies</code></div>
+            <div class="wiki-dl__desc">Второй CSV для сегмента agencies. Двух-сегментный импорт в одном запуске — platforms из <code>--apollo-csv</code>, agencies из этого флага. Оба мержатся в один список контактов.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--max-findymail</code></div>
+            <div class="wiki-dl__desc">Максимум контактов для обогащения через FindyMail (по умолч.: 1500). Защитный лимит для контроля расходов.</div>
+          </div>
+        </div>
+
+        <h3>Продвинутые</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--prompt-file</code></div>
+            <div class="wiki-dl__desc">Кастомный промпт классификации из текстового файла. Перезаписывает промпт из БД. Для тестирования новых промптов.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term"><code>--re-analyze</code></div>
+            <div class="wiki-dl__desc">Перезапустить GPT-классификацию на существующем ране без повторного сбора. Требует <code>--run-id</code>. Использует последний промпт из БД или <code>--prompt-file</code>.</div>
+          </div>
+        </div>
+
+        <h3>Массив STEPS и логика резюме</h3>
+        <p>Pipeline определяет упорядоченную последовательность шагов. <code>--from-step</code> обрезает массив, определяя какие шаги выполнять:</p>
+<pre><code>STEPS = ["start", "blacklist", "prefilter", "scrape", "analyze", "verify",
+         "export", "people", "findymail", "upload"]
+
+# --from-step people → выполняет: ["people", "findymail", "upload"]
+# --from-step export → выполняет: ["export", "people", "findymail", "upload"]</code></pre>
+        <p>Типичные паттерны возобновления после checkpoint'ов:</p>
+<pre><code># После CP1 (блэклист одобрен через UI):
+python3 universal_pipeline.py --project-id 42 --from-step prefilter --run-id 205
+
+# После CP2 (таргеты одобрены через UI):
+python3 universal_pipeline.py --project-id 42 --from-step verify --run-id 205
+
+# После CP3 (стоимость одобрена) — перейти к экспорту:
+python3 universal_pipeline.py --project-id 42 --from-step export --run-id 205
+
+# Импорт людей + обогащение + загрузка (самый частый resume point):
+python3 universal_pipeline.py --project-id 42 --from-step people \
+  --apollo-csv platforms.csv --apollo-csv-agencies agencies.csv
+
+# Переанализ с новым промптом, затем продолжить:
+python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
+  --prompt-file new_prompt_v9.txt</code></pre>
+      </section>
+
+    </main>
+  </div>
+
+  <button class="wiki-sidebar-toggle" id="sidebarToggle">☰</button>
+
+  <footer class="site-footer">
+    <p>Архитектура сбора TAM — Справочная вики</p>
+    <p style="margin-top: 8px;">Credits: DimaTorzok</p>
+  </footer>
+
+  <script>
+    // Sidebar search functionality
+    const wikiSearch = document.getElementById('wikiSearch');
+    const wikiNav = document.getElementById('wikiNav');
+    const allLinks = wikiNav.querySelectorAll('.wiki-nav__link');
+
+    wikiSearch.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      allLinks.forEach(link => {
+        const text = link.textContent.toLowerCase();
+        link.style.display = text.includes(query) ? '' : 'none';
+      });
+    });
+
+    // Active section tracking with IntersectionObserver
+    const sections = document.querySelectorAll('.wiki-section');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          allLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-section-id') === id) {
+              link.classList.add('active');
+              link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          });
+        }
+      });
+    }, { rootMargin: '-80px 0px -65% 0px', threshold: 0 });
+
+    sections.forEach(section => observer.observe(section));
+
+    // Collapsible sections
+    const headings = document.querySelectorAll('.wiki-nav__heading');
+    headings.forEach(heading => {
+      heading.addEventListener('click', () => {
+        const list = heading.nextElementSibling;
+        if (list && list.classList.contains('wiki-nav__list')) {
+          list.style.display = list.style.display === 'none' ? '' : 'none';
+        }
+      });
+    });
+
+    // Mobile sidebar toggle
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('wikiSidebar');
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+
+    // Smooth scroll for sidebar links
+    allLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const href = link.getAttribute('href');
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

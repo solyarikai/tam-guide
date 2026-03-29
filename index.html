@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAM Gathering Architecture — Learning Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="wiki.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <a href="index.html" class="site-header__logo">
+      <span class="site-header__logo-icon">T</span>
+      TAM Guide
+    </a>
+    <nav class="site-header__nav">
+      <a href="index.html" class="active">All Lessons</a>
+      <a href="lesson-1.html">Start Learning</a>
+    </nav>
+    <div class="lang-switch">
+      <a href="index.html" class="lang-switch__btn lang-switch__btn--active">EN</a>
+      <a href="index-ru.html" class="lang-switch__btn">RU</a>
+    </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="header-progress" id="headerProgress" style="width: 0%"></div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero-section">
+    <div class="display">TAM Gathering Architecture</div>
+    <p class="body-lg">A step-by-step guide to the system that finds, analyzes, and verifies target companies across any source — with full pipeline control, approval gates, and AI-powered analysis.</p>
+
+    <!-- Mode Switcher -->
+    <div class="mode-switcher">
+      <a href="index.html" class="mode-card" style="border-color: var(--color-primary-800);">
+        <div class="mode-card__icon mode-card__icon--learn">&#x1F393;</div>
+        <div class="mode-card__title">Lessons</div>
+        <div class="mode-card__desc">7 step-by-step lessons with progress tracking</div>
+      </a>
+      <a href="wiki.html" class="mode-card">
+        <div class="mode-card__icon mode-card__icon--wiki">&#x1F4D6;</div>
+        <div class="mode-card__title">Wiki</div>
+        <div class="mode-card__desc">Full reference with sidebar navigation and deep links</div>
+      </a>
+    </div>
+
+    <!-- Overall Progress -->
+    <div class="overall-progress">
+      <div class="overall-progress__bar">
+        <div class="overall-progress__fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <div class="overall-progress__text" id="progressText">0 of 7 lessons completed</div>
+    </div>
+  </section>
+
+  <!-- Lesson Cards -->
+  <section style="padding: 0 24px 80px;">
+    <div class="lessons-grid">
+
+      <a href="lesson-1.html" class="lesson-card" data-lesson="1">
+        <div class="lesson-card__number" id="num1">1</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">The Big Picture</div>
+          <div class="lesson-card__desc">Pipeline flow, 10 phases, 3 checkpoints, crash recovery, and why the order is non-negotiable.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-2.html" class="lesson-card" data-lesson="2">
+        <div class="lesson-card__number" id="num2">2</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">Project Context & Operator Modes</div>
+          <div class="lesson-card__desc">What the system knows about each project, 4 input modes, and segment-level tracking.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-3.html" class="lesson-card" data-lesson="3">
+        <div class="lesson-card__number" id="num3">3</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">The Data Layer</div>
+          <div class="lesson-card__desc">All 7 database tables with full schemas, indexes, and design rationale.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-4.html" class="lesson-card" data-lesson="4">
+        <div class="lesson-card__number" id="num4">4</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">Source-Agnostic Architecture & Adapters</div>
+          <div class="lesson-card__desc">The adapter pattern, registry system, all 15+ source adapters, and how to add new ones.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-5.html" class="lesson-card" data-lesson="5">
+        <div class="lesson-card__number" id="num5">5</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">CRM Blacklist & Approval Gates</div>
+          <div class="lesson-card__desc">Project-scoped blacklisting, materialized views, gate lifecycle, and crash safety.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-6.html" class="lesson-card" data-lesson="6">
+        <div class="lesson-card__number" id="num6">6</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">Service Layer, API & Implementation</div>
+          <div class="lesson-card__desc">The orchestrator class, 16 API endpoints, files to create, migration plan, and build phases.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+      <a href="lesson-7.html" class="lesson-card" data-lesson="7">
+        <div class="lesson-card__number" id="num7">7</div>
+        <div class="lesson-card__body">
+          <div class="lesson-card__title">Edge Cases, Real-World Example & Learnings</div>
+          <div class="lesson-card__desc">8 critical edge cases, the full EasyStaff story (11 steps), prompt iteration loop, and key learnings.</div>
+        </div>
+        <svg class="lesson-card__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>TAM Gathering Architecture Guide · Based on the God Architecture document</p>
+    <p style="margin-top: 8px;">Credits: DimaTorzok</p>
+  </footer>
+
+  <script>
+    // Progress tracking via localStorage
+    function getCompleted() {
+      try {
+        return JSON.parse(localStorage.getItem('tam-guide-completed') || '[]');
+      } catch { return []; }
+    }
+
+    function updateProgress() {
+      const completed = getCompleted();
+      const pct = Math.round((completed.length / 7) * 100);
+
+      // Progress bar
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      const header = document.getElementById('headerProgress');
+
+      if (fill) fill.style.width = pct + '%';
+      if (header) header.style.width = pct + '%';
+      if (text) text.textContent = completed.length + ' of 7 lessons completed';
+
+      // Update lesson card numbers
+      for (let i = 1; i <= 7; i++) {
+        const num = document.getElementById('num' + i);
+        if (num && completed.includes(i)) {
+          num.classList.add('lesson-card__number--completed');
+          num.innerHTML = '&#10003;';
+        }
+      }
+    }
+
+    updateProgress();
+  </script>
+
+</body>
+</html>
