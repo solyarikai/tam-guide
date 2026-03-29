@@ -3625,15 +3625,56 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       if (isResizing) { isResizing = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; }
     });
 
-    function getWikiContext() {
-      const content = document.querySelector('.wiki-content');
-      if (!content) return '';
-      let text = content.innerText || content.textContent || '';
-      text = text.replace(/\n{3,}/g, '\n\n').trim();
-      if (text.length > MAX_CONTEXT_CHARS) {
-        text = text.slice(0, MAX_CONTEXT_CHARS) + '\n\n[... context truncated for brevity ...]';
+    // ── Wiki context: smart section retrieval ──
+    function getAllSections() {
+      const sections = [];
+      document.querySelectorAll('.wiki-section').forEach(sec => {
+        const heading = sec.querySelector('h2, h3');
+        const title = heading ? heading.textContent.replace(/#/g, '').trim() : '';
+        const text = (sec.innerText || sec.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+        if (text.length > 30) sections.push({ title, text, el: sec });
+      });
+      return sections;
+    }
+
+    function scoreSections(query, sections) {
+      const words = query.toLowerCase().replace(/[^\w\sа-яё]/gi, '').split(/\s+/).filter(w => w.length > 2);
+      return sections.map(sec => {
+        const lower = sec.text.toLowerCase();
+        const titleLower = sec.title.toLowerCase();
+        let score = 0;
+        for (const w of words) {
+          if (titleLower.includes(w)) score += 5;
+          const matches = lower.split(w).length - 1;
+          score += Math.min(matches, 10);
+        }
+        return { ...sec, score };
+      }).sort((a, b) => b.score - a.score);
+    }
+
+    function getWikiContext(query) {
+      const sections = getAllSections();
+      if (!sections.length) return '';
+      if (!query) {
+        const all = sections.map(s => `## ${s.title}\n${s.text}`).join('\n\n');
+        return all.length > MAX_CONTEXT_CHARS ? all.slice(0, MAX_CONTEXT_CHARS) : all;
       }
-      return text;
+      const scored = scoreSections(query, sections);
+      let ctx = '';
+      let added = 0;
+      const overview = sections[0];
+      ctx += `## ${overview.title}\n${overview.text}\n\n`;
+      for (const sec of scored) {
+        if (sec.title === overview.title) continue;
+        const chunk = `## ${sec.title}\n${sec.text}\n\n`;
+        if (ctx.length + chunk.length > MAX_CONTEXT_CHARS) {
+          if (added >= 2) break;
+        }
+        ctx += chunk;
+        added++;
+        if (added >= 6) break;
+      }
+      return ctx.trim();
     }
 
     function addMessage(role, text) {
@@ -3685,7 +3726,7 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
       showTyping();
 
       try {
-        const sys = `Ты — полезный ассистент, который отвечает на вопросы об архитектуре TAM Gathering — системе генерации лидов. У тебя в контексте документация вики. Отвечай чётко и по делу, ссылаясь на конкретные функции, шаги и концепции. Если что-то не описано в вики — скажи об этом. Отвечай на том языке, на котором пишет пользователь.\n\n=== СОДЕРЖИМОЕ ВИКИ ===\n${getWikiContext()}`;
+        const sys = `Ты — полезный ассистент, который отвечает на вопросы об архитектуре TAM Gathering — системе генерации лидов. У тебя в контексте документация вики. Отвечай чётко и по делу, ссылаясь на конкретные функции, шаги и концепции. Если что-то не описано в вики — скажи об этом. Отвечай на том языке, на котором пишет пользователь.\n\n=== СОДЕРЖИМОЕ ВИКИ ===\n${getWikiContext(text)}`;
         const msgs = [{ role: 'system', content: sys }, ...history];
 
         let res = null;
