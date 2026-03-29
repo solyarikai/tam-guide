@@ -3638,13 +3638,32 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
 
     sections.forEach(section => observer.observe(section));
 
-    // Collapsible sections
+    // Heading click → scroll to group header in content
     const headings = document.querySelectorAll('.wiki-nav__heading');
+    const sectionToGroup = {
+      'getting-started': 'group-getting-started',
+      'pipeline': 'group-pipeline',
+      'project-context': 'group-project-context',
+      'database': 'group-database',
+      'blacklist': 'group-blacklist',
+      'adapter': 'group-adapter',
+      'service': 'group-service',
+      'implementation': 'group-implementation',
+      'edge-cases': 'group-edge-cases',
+      'example': 'group-example',
+      'code-reference': 'group-universal-pipeline',
+    };
     headings.forEach(heading => {
+      heading.style.cursor = 'pointer';
       heading.addEventListener('click', () => {
-        const list = heading.nextElementSibling;
-        if (list && list.classList.contains('wiki-nav__list')) {
-          list.style.display = list.style.display === 'none' ? '' : 'none';
+        const sectionKey = heading.getAttribute('data-section');
+        const groupId = sectionToGroup[sectionKey];
+        if (groupId) {
+          const target = document.getElementById(groupId);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+            sidebar.classList.remove('open');
+          }
         }
       });
     });
