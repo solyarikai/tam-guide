@@ -3689,20 +3689,23 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
     });
   </script>
 
-  <!-- ═══ CHAT WIDGET ═══ -->
-  <button class="chat-fab" id="chatFab" title="Ask a question about the architecture">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>
-  </button>
+  <!-- ═══ CHAT: BOTTOM BAR (collapsed state) ═══ -->
+  <div class="chat-bar" id="chatBar">
+    <input class="chat-bar__input" id="chatBarInput" type="text" placeholder="Ask a question about the architecture..." autocomplete="off" />
+    <button class="chat-bar__send" id="chatBarSend">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+    </button>
+  </div>
 
+  <!-- ═══ CHAT: SIDE PANEL (expanded state) ═══ -->
   <div class="chat-panel" id="chatPanel">
+    <div class="chat-resize" id="chatResize"></div>
     <div class="chat-header">
-      <span class="chat-header__title">Architecture Assistant</span>
+      <span class="chat-header__title">Assistant</span>
       <button class="chat-header__close" id="chatClose">&times;</button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input-row" id="chatInputRow">
+    <div class="chat-input-row">
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="Ask about the pipeline architecture..."></textarea>
       <button class="chat-send" id="chatSend">Send</button>
     </div>
@@ -3710,189 +3713,162 @@ python3 universal_pipeline.py --project-id 42 --re-analyze --run-id 205 \
 
   <script>
   (function() {
-    const CHAT_CONFIG = {
-      model: 'google/gemini-2.0-flash-exp:free',
-      maxTokens: 1024,
-      lang: 'en',
-    };
+    const MODEL = 'google/gemini-2.0-flash-exp:free';
+    const API_KEY = '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';
+    const MAX_TOKENS = 1024;
 
-    const fab = document.getElementById('chatFab');
+    const bar = document.getElementById('chatBar');
+    const barInput = document.getElementById('chatBarInput');
+    const barSend = document.getElementById('chatBarSend');
     const panel = document.getElementById('chatPanel');
     const closeBtn = document.getElementById('chatClose');
     const messagesEl = document.getElementById('chatMessages');
     const inputEl = document.getElementById('chatInput');
     const sendBtn = document.getElementById('chatSend');
-    const inputRow = document.getElementById('chatInputRow');
+    const resizeHandle = document.getElementById('chatResize');
 
-    const apiKey = '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';
     let history = [];
     let isStreaming = false;
+    let panelOpen = false;
 
-    // ── Toggle panel ──
-    fab.addEventListener('click', () => {
-      panel.classList.toggle('open');
-      if (panel.classList.contains('open') && history.length === 0) showWelcome();
-      if (panel.classList.contains('open')) inputEl.focus();
-    });
-    closeBtn.addEventListener('click', () => panel.classList.remove('open'));
-
-    function showWelcome() {
-      addMessage('system', 'Ask me anything about the TAM Gathering Architecture. I have the full wiki content as context.');
+    // ── Open panel ──
+    function openPanel() {
+      panelOpen = true;
+      panel.classList.add('open');
+      bar.classList.add('hidden');
+      if (history.length === 0) {
+        addMessage('system', 'Ask me anything about the TAM Gathering Architecture. I have the full wiki content as context.');
+      }
+      inputEl.focus();
     }
 
-    // ── Extract wiki text ──
+    function closePanel() {
+      panelOpen = false;
+      panel.classList.remove('open');
+      bar.classList.remove('hidden');
+    }
+
+    closeBtn.addEventListener('click', closePanel);
+
+    // ── Bar → sends first message and opens panel ──
+    function sendFromBar() {
+      const text = barInput.value.trim();
+      if (!text) { openPanel(); return; }
+      barInput.value = '';
+      openPanel();
+      // Inject the text into panel and send
+      inputEl.value = text;
+      sendMessage();
+    }
+    barSend.addEventListener('click', sendFromBar);
+    barInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendFromBar(); } });
+    barInput.addEventListener('focus', () => { if (history.length > 0) openPanel(); });
+
+    // ── Resize ──
+    let isResizing = false;
+    resizeHandle.addEventListener('mousedown', e => {
+      isResizing = true;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e => {
+      if (!isResizing) return;
+      const w = Math.max(320, Math.min(window.innerWidth - 200, window.innerWidth - e.clientX));
+      document.documentElement.style.setProperty('--chat-width', w + 'px');
+    });
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+
+    // ── Wiki context ──
     function getWikiContext() {
       const content = document.querySelector('.wiki-content');
       if (!content) return '';
-      // Get text, collapse whitespace
       let text = content.innerText || content.textContent || '';
-      text = text.replace(/\n{3,}/g, '\n\n').trim();
-      // Gemini Flash has 1M context — no truncation needed
-      return text;
+      return text.replace(/\n{3,}/g, '\n\n').trim();
     }
 
     // ── Messages ──
     function addMessage(role, text) {
       const div = document.createElement('div');
-      if (role === 'system') {
-        div.className = 'chat-msg chat-msg--system';
-        div.textContent = text;
-      } else if (role === 'user') {
-        div.className = 'chat-msg chat-msg--user';
-        div.textContent = text;
-      } else {
-        div.className = 'chat-msg chat-msg--bot';
-        div.innerHTML = formatMarkdown(text);
-      }
+      if (role === 'system') { div.className = 'chat-msg chat-msg--system'; div.textContent = text; }
+      else if (role === 'user') { div.className = 'chat-msg chat-msg--user'; div.textContent = text; }
+      else { div.className = 'chat-msg chat-msg--bot'; div.innerHTML = fmtMd(text); }
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return div;
     }
 
-    function formatMarkdown(text) {
-      return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
+    function fmtMd(t) {
+      return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\n/g,'<br>');
     }
 
     function showTyping() {
-      const div = document.createElement('div');
-      div.className = 'chat-msg chat-msg--bot';
-      div.id = 'chatTyping';
-      div.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      const d = document.createElement('div');
+      d.className = 'chat-msg chat-msg--bot'; d.id = 'chatTyping';
+      d.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+      messagesEl.appendChild(d); messagesEl.scrollTop = messagesEl.scrollHeight;
     }
-    function removeTyping() {
-      const el = document.getElementById('chatTyping');
-      if (el) el.remove();
-    }
+    function removeTyping() { const e = document.getElementById('chatTyping'); if (e) e.remove(); }
 
-    // ── Send message ──
+    // ── Send ──
     async function sendMessage() {
       const text = inputEl.value.trim();
       if (!text || isStreaming) return;
 
       addMessage('user', text);
-      inputEl.value = '';
-      inputEl.style.height = 'auto';
+      inputEl.value = ''; inputEl.style.height = 'auto';
       history.push({ role: 'user', content: text });
-
-      isStreaming = true;
-      sendBtn.disabled = true;
+      isStreaming = true; sendBtn.disabled = true;
       showTyping();
 
       try {
-        const wikiContext = getWikiContext();
-        const systemPrompt = `You are a helpful assistant that answers questions about the TAM Gathering Architecture — a lead generation pipeline system. You have the full wiki documentation as context below. Answer questions clearly and concisely, referencing specific functions, steps, or concepts from the documentation. If something is not covered in the wiki, say so.
-
-Keep answers focused and practical. Use code references when relevant. Respond in the same language the user writes in.
-
-=== WIKI CONTENT ===
-${wikiContext}`;
-
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...history,
-        ];
+        const sys = `You are a helpful assistant that answers questions about the TAM Gathering Architecture — a lead generation pipeline system. You have the full wiki documentation as context below. Answer clearly and concisely, referencing specific functions, steps, or concepts. If something is not covered in the wiki, say so. Respond in the same language the user writes in. Use code references when relevant.\n\n=== WIKI CONTENT ===\n${getWikiContext()}`;
+        const msgs = [{ role: 'system', content: sys }, ...history];
 
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': window.location.href,
-          },
-          body: JSON.stringify({
-            model: CHAT_CONFIG.model,
-            messages,
-            max_tokens: CHAT_CONFIG.maxTokens,
-            stream: true,
-          }),
+          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': location.href },
+          body: JSON.stringify({ model: MODEL, messages: msgs, max_tokens: MAX_TOKENS, stream: true }),
         });
-
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`API error ${res.status}: ${err.substring(0, 200)}`);
-        }
+        if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0,200)}`);
 
         removeTyping();
         const botDiv = addMessage('bot', '');
-        let fullText = '';
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
+        let full = '';
+        const reader = res.body.getReader(), dec = new TextDecoder();
+        let buf = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') break;
-            try {
-              const json = JSON.parse(data);
-              const delta = json.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullText += delta;
-                botDiv.innerHTML = formatMarkdown(fullText);
-                messagesEl.scrollTop = messagesEl.scrollHeight;
-              }
-            } catch(e) {}
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split('\n'); buf = lines.pop();
+          for (const ln of lines) {
+            if (!ln.startsWith('data: ')) continue;
+            const d = ln.slice(6).trim();
+            if (d === '[DONE]') break;
+            try { const c = JSON.parse(d).choices?.[0]?.delta?.content; if (c) { full += c; botDiv.innerHTML = fmtMd(full); messagesEl.scrollTop = messagesEl.scrollHeight; } } catch(e){}
           }
         }
-
-        history.push({ role: 'assistant', content: fullText });
-        // Keep history manageable (last 10 exchanges)
+        history.push({ role: 'assistant', content: full });
         if (history.length > 20) history = history.slice(-20);
-
       } catch (err) {
         removeTyping();
         addMessage('system', `Error: ${err.message}`);
-      } finally {
-        isStreaming = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
-      }
+      } finally { isStreaming = false; sendBtn.disabled = false; inputEl.focus(); }
     }
 
-    // ── Event listeners ──
     sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
-    // Auto-resize textarea
-    inputEl.addEventListener('input', () => {
-      inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-    });
+    inputEl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px'; });
   })();
   </script>
 </body>
