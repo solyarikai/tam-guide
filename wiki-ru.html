@@ -2251,12 +2251,12 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
       <!-- CODE REFERENCE -->
       <div class="wiki-group-header" id="group-universal-pipeline">
         <h2 class="wiki-group-header__title">Пример реализации: Universal Pipeline</h2>
-        <p class="wiki-group-header__desc">Реальный пример того, как можно реализовать описанную архитектуру на практике. Этот pipeline был создан Софией (OnSocial) как практическое применение TAM-фреймворка. Используйте как ориентир, а не как единственно верную спецификацию.</p>
+        <p class="wiki-group-header__desc">Реальный пример того, как можно реализовать описанную архитектуру на практике. Этот pipeline был создан Софией (OnSocial) как практическое применение TAM-фреймворка.</p>
       </div>
 
       <section class="wiki-section" id="code-overview">
         <h2>Обзор скрипта <a href="#code-overview" class="anchor-link">#</a></h2>
-        <p><code>universal_pipeline.py</code> — пример реализации, созданный sales-инженером в OnSocial. Он демонстрирует один из способов собрать описанные в гайде архитектурные концепции в рабочий pipeline. Код проект-агностичный — вся конфигурация (сегменты, email-копия, аккаунты) загружается из БД — но конкретные решения и паттерны здесь лишь один из многих возможных подходов.</p>
+        <p><code>universal_pipeline.py</code> — пример реализации, созданный sales-инженером в OnSocial. Он демонстрирует, как описанные в гайде архитектурные концепции можно собрать в рабочий pipeline. Код проект-агностичный — вся конфигурация (сегменты, email-копия, аккаунты) загружается из БД.</p>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Файл</div>
