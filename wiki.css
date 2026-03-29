@@ -3,6 +3,33 @@
    Extends styles.css (must be loaded after it)
    ============================================ */
 
+/* === WIKI HERO === */
+.wiki-hero {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+.wiki-hero h1 {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  color: var(--color-neutral-900);
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+.wiki-hero__subtitle {
+  font-size: 1.125rem;
+  color: var(--color-neutral-600);
+  line-height: 1.6;
+  max-width: 720px;
+  margin: 0;
+}
+.wiki-hero__subtitle code {
+  background: var(--color-surface-card);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+
 /* === WIKI LAYOUT === */
 .wiki-layout {
   display: flex;
