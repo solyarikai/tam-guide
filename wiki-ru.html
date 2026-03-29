@@ -2863,7 +2863,22 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
 <pre><code># Pattern: ## Email {label} ...\n\n**Subject:** {subject}\n\n{body}
 pattern = r'## Email (\d+[AB]?) .+?\n\n\*\*Subject:\*\* (.+?)\n\n(.*?)(?=\n---|\n## |\Z)'
 # Ищет по нескольким base paths: repo root, SOFIA_DIR, текущая директория
-# Путь файла из конфига сегмента: segment.sequence_file</code></pre>
+# Путь файла из конфига сегмента: segment.sequence_file
+
+# Постобработка для совместимости со SmartLead:
+body = body.replace("\n\n", "&lt;br&gt;&lt;br&gt;").replace("\n", "&lt;br&gt;")
+subject = subject.replace("—", "-")  # em dash → обычный дефис
+body = body.replace("—", "-")</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Переносы строк</div>
+            <div class="wiki-dl__desc">SmartLead игнорирует <code>\n</code> в теле письма — требует HTML-теги <code>&lt;br&gt;</code>. Парсер конвертирует все переносы: <code>\n\n</code> → <code>&lt;br&gt;&lt;br&gt;</code>, затем <code>\n</code> → <code>&lt;br&gt;</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Замена em dash</div>
+            <div class="wiki-dl__desc">GPT часто генерирует длинные тире (<code>—</code>) в темах и телах писем. Некоторые email-клиенты отображают их некорректно, поэтому они заменяются на обычные дефисы (<code>-</code>) для максимальной совместимости.</div>
+          </div>
+        </div>
         <p>Сгенерированные секвенции сохраняются как markdown для редактирования человеком перед следующим использованием: <code>generated_sequence_{segment}_{date}.md</code>. Оператор всегда проверяет перед загрузкой — никогда не загружается автоматически. GPT-4o вызов запускается через <code>docker exec</code> против backend контейнера OpenAI client.</p>
       </section>
 

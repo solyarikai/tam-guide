@@ -3022,7 +3022,22 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
 <pre><code># Pattern: ## Email {label} ...\n\n**Subject:** {subject}\n\n{body}
 pattern = r'## Email (\d+[AB]?) .+?\n\n\*\*Subject:\*\* (.+?)\n\n(.*?)(?=\n---|\n## |\Z)'
 # Searches multiple base paths: repo root, SOFIA_DIR, current dir
-# File path from segment config: segment.sequence_file</code></pre>
+# File path from segment config: segment.sequence_file
+
+# Post-processing for SmartLead compatibility:
+body = body.replace("\n\n", "&lt;br&gt;&lt;br&gt;").replace("\n", "&lt;br&gt;")
+subject = subject.replace("—", "-")  # em dash → regular dash
+body = body.replace("—", "-")</code></pre>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Line breaks</div>
+            <div class="wiki-dl__desc">SmartLead ignores <code>\n</code> in email bodies — requires <code>&lt;br&gt;</code> HTML tags. The parser converts all newlines: <code>\n\n</code> → <code>&lt;br&gt;&lt;br&gt;</code>, then <code>\n</code> → <code>&lt;br&gt;</code>.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Em dash cleanup</div>
+            <div class="wiki-dl__desc">GPT often generates em dashes (<code>—</code>) in subjects and bodies. Some email clients render them incorrectly, so they are replaced with regular dashes (<code>-</code>) for maximum compatibility.</div>
+          </div>
+        </div>
         <p>Generated sequences are saved as markdown for human editing before next use: <code>generated_sequence_{segment}_{date}.md</code>. Operator always reviews before upload — never auto-uploaded. GPT-4o call runs via <code>docker exec</code> against the backend container's OpenAI client.</p>
       </section>
 
