@@ -144,7 +144,6 @@
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Режимы ввода</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Утилиты и хелперы</a></li>
             <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Обновление блэклиста после CP2</a></li>
-            <li><a href="#code-batching" class="wiki-nav__link" data-section-id="code-batching">Батчинг и авто-pipeline</a></li>
             <li><a href="#code-cli" class="wiki-nav__link" data-section-id="code-cli">CLI-справочник</a></li>
           </ul>
         </div>
@@ -2260,7 +2259,7 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Файл</div>
-            <div class="wiki-dl__desc"><code>universal_pipeline.py</code> — единая точка входа (~1550 строк), без зависимостей от фреймворков, только <code>httpx</code></div>
+            <div class="wiki-dl__desc"><code>universal_pipeline.py</code> — единая точка входа (~1644 строк), без зависимостей от фреймворков, только <code>httpx</code></div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Архитектура</div>
@@ -2513,7 +2512,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
               <span class="wiki-timeline__title"><code>step4_scrape()</code> — Скрейпинг сайтов</span>
             </div>
             <div class="wiki-timeline__body">
-              Качает главную страницу сайта каждой компании для анализа GPT. Может занять 5–15 минут для больших ранов (500+ компаний). Использует <code>api_long()</code> с <code>expected_phase="scraped"</code> и таймаутом 3600 сек — если HTTP-соединение разорвётся посреди скрейпинга, pipeline опрашивает статус рана каждые 30 секунд, пока бэкенд не закончит. Выводит counts scraped/skipped.
+              Качает главную страницу сайта каждой компании для анализа GPT. Может занять 5–15 минут для больших ранов (500+ компаний). Вызывает бэкенд <code>POST /pipeline/gathering/runs/{id}/scrape</code> и опрашивает статус рана до завершения. Выводит counts scraped/skipped.
             </div>
             <span class="wiki-timeline__meta wiki-timeline__meta--free">httpx, 5–15 мин на 500 компаний</span>
           </div>
@@ -2524,7 +2523,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
               <span class="wiki-timeline__title"><code>step5_analyze()</code> — Классификация GPT</span>
             </div>
             <div class="wiki-timeline__body">
-              GPT-4o-mini читает сайт каждой компании и классифицирует: наш клиент или нет? Присваивает сегмент (platform/agency) и confidence score. Занимает 10–20 минут на 500 компаний. Использует <code>api_long()</code> с <code>expected_phase="analyzed"</code> и таймаутом 3600 сек — устойчив к разрывам соединения при долгих запусках классификации. <strong>Приоритет резолва промпта:</strong> <code>--prompt-file</code> аргумент → <code>config.prompt_text</code> из БД → ошибка и выход. Выводит target rate (напр. "Targets: 120/500 (24%)"). Backend создаёт gate CP2 со списком всех таргетов — каждый таргет показан с domain, name, segment, confidence. Pipeline паузируется для проверки оператором.
+              GPT-4o-mini читает сайт каждой компании и классифицирует: наш клиент или нет? Присваивает сегмент (platform/agency) и confidence score. Занимает 10–20 минут на 500 компаний. Вызывает бэкенд <code>POST /pipeline/gathering/runs/{id}/analyze</code> и опрашивает статус рана до завершения. <strong>Приоритет резолва промпта:</strong> <code>--prompt-file</code> аргумент → <code>config.prompt_text</code> из БД → ошибка и выход. Выводит target rate (напр. "Targets: 120/500 (24%)"). Backend создаёт gate CP2 со списком всех таргетов — каждый таргет показан с domain, name, segment, confidence. Pipeline паузируется для проверки оператором.
             </div>
             <span class="wiki-timeline__meta wiki-timeline__meta--cheap">GPT-4o-mini ~$0.01–0.05, 10–20 мин</span>
           </div>
@@ -2982,66 +2981,6 @@ if mode == "expand":     требует --base-run
           </div>
         </div>
 
-        <h3>api_long() — Устойчивые вызовы долгих операций</h3>
-        <p>Обёртка для API-операций, которые занимают минуты (scrape, analyze). Проблема: скрейпинг 500 сайтов занимает 5–15 минут, анализ 500 компаний — 10–20 минут. За это время HTTP-соединение может разорваться (timeout, перезапуск бэкенда, проблемы с сетью). Но бэкенд сохраняет результаты в базу данных инкрементально — данные не теряются. Решение: если соединение упало — не паникуем, а опрашиваем статус рана каждые 30 секунд, пока фаза не продвинется.</p>
-<pre><code>def api_long(method: str, path: str, expected_phase: str, run_id: int,
-             timeout: int = 3600, poll_interval: int = 30, **kwargs) -> dict:
-    url = f"{BACKEND_BASE}/api{path}"
-    try:
-        r = getattr(httpx, method)(url, headers=BACKEND_HEADERS, timeout=timeout, **kwargs)
-        if r.status_code >= 400:
-            return {"_error": r.status_code, "_detail": r.text[:500]}
-        return r.json()
-    except (httpx.ReadTimeout, httpx.RemoteProtocolError,
-            httpx.ConnectError, httpx.ReadError) as e:
-        print(f"  Connection lost ({type(e).__name__}). Backend may still be working...")
-        print(f"  Polling until phase reaches '{expected_phase}'...")
-
-        start = time.time()
-        while time.time() - start < timeout:
-            time.sleep(poll_interval)
-            try:
-                r2 = httpx.get(f"{BACKEND_BASE}/api/pipeline/gathering/runs/{run_id}",
-                               headers=BACKEND_HEADERS, timeout=30)
-                if r2.status_code == 200:
-                    phase = r2.json().get("current_phase", "")
-                    elapsed = int(time.time() - start)
-                    print(f"  [{elapsed}s] Phase: {phase}")
-                    if phase == expected_phase or phase.startswith("awaiting_"):
-                        print(f"  Backend finished — phase is now '{phase}'")
-                        return r2.json()
-            except Exception:
-                print(f"  [{int(time.time()-start)}s] Backend unreachable, waiting...")
-
-        print(f"  Timeout after {timeout}s. Check manually.")
-        return {"_timeout": True}</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term"><code>expected_phase</code></div>
-            <div class="wiki-dl__desc">Фаза, которую ран должен достичь ПОСЛЕ завершения операции. Для scrape: <code>"scraped"</code>. Для analyze: <code>"analyzed"</code>. Polling останавливается, когда обнаружена эта фаза (или любая <code>awaiting_*</code>).</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Обрабатываемые ошибки</div>
-            <div class="wiki-dl__desc"><code>httpx.ReadTimeout</code>, <code>httpx.RemoteProtocolError</code>, <code>httpx.ConnectError</code>, <code>httpx.ReadError</code>. Любая из них запускает fallback с polling вместо краша.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Таймаут</div>
-            <div class="wiki-dl__desc">По умолчанию 3600 секунд (1 час). Если ожидаемая фаза не достигнута за это время, возвращает <code>{"_timeout": True}</code> — оператор должен проверить вручную.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Интервал опроса</div>
-            <div class="wiki-dl__desc">Каждые 30 секунд по умолчанию. Каждый опрос печатает прошедшее время и текущую фазу для прозрачности.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Почему не просто retry?</div>
-            <div class="wiki-dl__desc">Повторный POST перезапустил бы операцию на бэкенде (дублирование работы). Polling GET-эндпоинта статуса безопасен — он read-only и показывает, закончил ли бэкенд работу сам.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Используется в</div>
-            <div class="wiki-dl__desc"><code>step4_scrape()</code> и <code>step5_analyze()</code> — обе функции заменили <code>api()</code> на <code>api_long()</code> для устойчивости к разрывам соединения при долгих операциях.</div>
-          </div>
-        </div>
-
         <h3>Управление состоянием — Crash Recovery</h3>
         <p>Pipeline можно остановить и возобновить с любого шага. Состояние сохраняется как JSON-файлы в директории <code>state/</code> проекта.</p>
 <pre><code>def save_state(state_dir, run_id, phase, gate_id=None, config_key=""):
@@ -3167,157 +3106,7 @@ OPENAI_API_KEY      # Для GOD_SEQUENCE — генерация через GPT-
         </div>
       </section>
 
-      <section class="wiki-section" id="code-batching">
-        <h2>Батчинг и авто-pipeline <a href="#code-batching" class="anchor-link">#</a></h2>
-        <p>Бэкенд не может надёжно обработать scrape/analyze 3000+ компаний одним запросом — соединения рвутся, память растёт, ошибки каскадируются. Система батчинга разбивает большие списки доменов на раны по 500 и проводит каждый ран через полный pipeline автоматически, без участия оператора на checkpoint'ах.</p>
-
-        <h3>Константа BATCH_SIZE</h3>
-<pre><code>BATCH_SIZE = 500  # Max domains per gathering run (for scrape stability)</code></pre>
-        <p>Если список доменов ≤ 500, создаётся один ран. Если больше — список разбивается на чанки по 500, каждый становится отдельным gathering run. Все раны делят один проект и попадают в общую БД — результаты объединяются.</p>
-
-        <h3>create_batched_runs() — Разбивка доменов на раны</h3>
-<pre><code>def create_batched_runs(config: ProjectConfig, domains: list[str],
-                        mode: str, notes_prefix: str = "") -> list[int]:
-    """Create multiple gathering runs if domains > BATCH_SIZE.
-    Returns list of run IDs."""
-    if len(domains) <= BATCH_SIZE:
-        batches = [domains]
-    else:
-        batches = [domains[i:i+BATCH_SIZE]
-                   for i in range(0, len(domains), BATCH_SIZE)]
-        print(f"\n  Splitting {len(domains)} domains into {len(batches)} batches of ~{BATCH_SIZE}")
-
-    run_ids = []
-    for i, batch in enumerate(batches):
-        batch_label = f" (batch {i+1}/{len(batches)})" if len(batches) > 1 else ""
-        result = api("post", "/pipeline/gathering/start", json={
-            "project_id": config.project_id,
-            "source_type": "manual.companies.manual",
-            "filters": {"domains": batch},
-            "triggered_by": "operator",
-            "input_mode": mode,
-            "notes": f"{notes_prefix}{batch_label} — {len(batch)} domains",
-        })
-        run_id = result["id"]
-        run_ids.append(run_id)
-        print(f"  Run #{run_id}: {len(batch)} domains{batch_label}")
-
-    return run_ids</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Source type</div>
-            <div class="wiki-dl__desc"><code>manual.companies.manual</code> — домены передаются напрямую (без поиска Clay/Apollo). Используется для повторной обработки известных доменов или expand mode.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Notes</div>
-            <div class="wiki-dl__desc">Каждый ран получает описательную заметку с номером батча и количеством доменов для лёгкой идентификации в UI.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Возвращает</div>
-            <div class="wiki-dl__desc">Список <code>run_id</code> (целые числа). Вызывающий код итерирует по ним и вызывает <code>process_run_pipeline()</code> для каждого.</div>
-          </div>
-        </div>
-
-        <h3>process_run_pipeline() — Полный авто-pipeline на ран</h3>
-        <p>Проводит один ран через весь pipeline автоматически: gather → blacklist → prefilter → scrape → analyze → approve → blacklist. Без checkpoint'ов — все gate'ы авто-одобряются. Использует <code>api_long()</code> для scrape и analyze, чтобы обрабатывать разрывы соединения без краша.</p>
-<pre><code>def process_run_pipeline(config: ProjectConfig, run_id: int,
-                         prompt_text: str = None, skip_gather_wait: bool = False):
-    # 1. Ждём завершения фазы gather (poll каждые 10 сек, до 10 мин)
-    if not skip_gather_wait:
-        for i in range(60):
-            time.sleep(10)
-            phase = api("get", f"/pipeline/gathering/runs/{run_id}").get("current_phase")
-            if phase != "gather": break
-
-    # 2. Проверяем текущую фазу — пропускаем уже пройденные шаги
-    phase = api("get", f"/pipeline/gathering/runs/{run_id}").get("current_phase")
-
-    # 3. Blacklist check + авто-одобрение CP1
-    if phase == "gathered":
-        api("post", f"/pipeline/gathering/runs/{run_id}/blacklist-check")
-        approve_pending_gate(config, run_id)
-
-    # 4. Pre-filter (убираем мусорные домены)
-    if phase == "scope_approved":
-        api("post", f"/pipeline/gathering/runs/{run_id}/pre-filter")
-
-    # 5. Scrape — устойчив через api_long()
-    if phase == "filtered":
-        step4_scrape(run_id)
-
-    # 6. Analyze — устойчив через api_long(), использует prompt_text
-    if phase == "scraped":
-        api_long("post", f"/pipeline/gathering/runs/{run_id}/analyze",
-                 expected_phase="analyzed", run_id=run_id, timeout=3600,
-                 params={"prompt_text": prompt_text, "model": "gpt-4o-mini"})
-
-    # 7. Авто-одобрение таргетов (CP2) + добавление в blacklist
-    approve_pending_gate(config, run_id)
-    blacklist_approved_targets(config, run_id)</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Phase-aware</div>
-            <div class="wiki-dl__desc">На каждом шаге функция проверяет текущую фазу через API. Если ран был прерван и возобновлён — продолжает с того места, где остановился, не повторяя пройденные шаги.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Авто-одобрение</div>
-            <div class="wiki-dl__desc">Все gate'ы (CP1, CP2) авто-одобряются через <code>approve_pending_gate()</code>. Безопасно для батчей, потому что оператор уже одобрил общий список доменов до начала батчинга.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Устойчивость</div>
-            <div class="wiki-dl__desc">Scrape и analyze используют <code>api_long()</code> — если соединение с бэкендом упадёт посреди 15-минутного скрейпинга, pipeline ждёт через polling вместо краша.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term"><code>skip_gather_wait</code></div>
-            <div class="wiki-dl__desc">Если <code>True</code> — пропускает ожидание фазы gather. Используется, когда домены переданы через manual source (мгновенная дедупликация, без задержки Clay).</div>
-          </div>
-        </div>
-
-        <h3>approve_pending_gate() — Авто-одобрение checkpoint</h3>
-<pre><code>def approve_pending_gate(config: ProjectConfig, run_id: int) -> bool:
-    """Find and approve pending gate for this run."""
-    gates = api("get",
-        f"/pipeline/gathering/approval-gates?project_id={config.project_id}",
-        raise_on_error=False)
-    items = gates if isinstance(gates, list) else gates.get("items", [])
-    for g in items:
-        if g.get("gathering_run_id") == run_id and g.get("status") == "pending":
-            api("post", f"/pipeline/gathering/approval-gates/{g['id']}/approve",
-                json={}, raise_on_error=False)
-            print(f"  Gate #{g['id']} approved")
-            return True
-    return False</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Как работает</div>
-            <div class="wiki-dl__desc">Запрашивает все approval gate'ы проекта, находит тот, который соответствует этому <code>run_id</code> со статусом <code>"pending"</code>, и одобряет автоматически.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Отличие от <code>approve_gate()</code></div>
-            <div class="wiki-dl__desc"><code>approve_gate(gate_id)</code> требует известный gate ID (для интерактивного режима). <code>approve_pending_gate(run_id)</code> находит gate автоматически — для batch/auto режима.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Обработка ошибок</div>
-            <div class="wiki-dl__desc">Использует <code>raise_on_error=False</code> и try/except — если pending gate не существует, возвращает <code>False</code> молча. Безопасно вызывать на любой стадии pipeline.</div>
-          </div>
-        </div>
-
-        <h3>Поток батч-pipeline</h3>
-        <p>Полный поток для обработки 2000 доменов:</p>
-        <div class="wiki-state-flow">
-          <span class="wiki-state-flow__badge">2000 доменов</span>
-          <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">create_batched_runs()</span>
-          <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">4 рана × 500</span>
-          <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">process_run_pipeline() каждый</span>
-          <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">Всё в общей БД</span>
-        </div>
-      </section>
-
-      <section class="wiki-section" id="code-cli">
+            <section class="wiki-section" id="code-cli">
         <h2>CLI-справочник <a href="#code-cli" class="anchor-link">#</a></h2>
         <p>Полный справочник всех аргументов командной строки. Pipeline управляется исключительно через CLI-флаги.</p>
 
