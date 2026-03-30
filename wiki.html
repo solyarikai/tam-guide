@@ -2468,7 +2468,7 @@ ORDER BY avg_target_rate DESC;</code></pre>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 10</div>
-            <div class="wiki-dl__desc"><strong>IMPORT PEOPLE</strong> — operator manually searches for people (decision-makers) in Apollo People UI using the target company list from Step 9. Exports as CSV. This step imports that CSV: maps Apollo columns → our format, enriches with domain/segment/social_proof, deduplicates.</div>
+            <div class="wiki-dl__desc"><strong>FIND PEOPLE</strong> — automatically searches for decision-makers in Apollo People UI via Puppeteer (<code>apollo_scraper.js</code>). Batches 30 domains at a time, filters by seniority + titles from <code>SEGMENT_PEOPLE_FILTERS</code>. Fallback: <code>--apollo-csv</code> for manual CSV import.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 11</div>
@@ -2503,7 +2503,7 @@ ORDER BY avg_target_rate DESC;</code></pre>
         <h3>Pipeline Flow (Technical)</h3>
 <pre><code>Steps 0-8:  Backend gathering API (Clay/Apollo → Dedup → Blacklist → Scrape → Classify)
 Step 9:     Export targets from DB (via docker exec psql)
-Step 10:    Import Apollo People CSV (manual search results)
+Step 10:    Apollo People UI Search (auto via Puppeteer) or CSV import (--apollo-csv fallback)
 Step 11:    FindyMail email enrichment (async, 5 concurrent)
 Step 12:    SmartLead upload (with per-sub-step checkpoints)</code></pre>
 
@@ -2689,6 +2689,17 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
             <span class="wiki-timeline__meta wiki-timeline__meta--cheap">GPT-4o-mini ~$0.01–0.05/batch, 10–20 min</span>
           </div>
 
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">5R</span>
+              <span class="wiki-timeline__title"><code>step5_reanalyze()</code> — Re-run Classification</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Re-runs GPT classification on the same scraped data with a different prompt — no re-scrape needed. Useful when target rate is too low or the prompt needs tuning. Triggered via <code>--re-analyze --run-id {N}</code>. Reports new target rate and target count, creates CP2 gate for approval.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--cheap">Same cost as analyze, no re-scrape</span>
+          </div>
+
           <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
             <div class="wiki-timeline__header">
               <span class="wiki-timeline__number">6</span>
@@ -2742,7 +2753,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
     # Per-segment breakdown + CSV + Google Sheets:
     # Sheet naming: "{code} | Targets | {segment_code} — {date}"
     # Example: "ES | Targets | INFLUENCER_PLATFORMS — 2025-01-15"</code></pre>
-        <p><strong>Step 10</strong> imports contacts from Apollo People CSV export. The column mapping handles variation in Apollo CSV headers:</p>
+        <p><strong>Step 10</strong> has two modes: <strong>automated</strong> (default) — Puppeteer searches Apollo People UI, batching 30 domains per request with segment-specific titles/seniorities from <code>SEGMENT_PEOPLE_FILTERS</code>; and <strong>manual CSV</strong> (<code>--apollo-csv</code> fallback). Both use the same column mapping:</p>
 <pre><code>APOLLO_CSV_COLUMNS = {
     "first_name": ["First Name", "first_name"],
     "last_name":  ["Last Name", "last_name"],
@@ -2848,6 +2859,9 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
             <div class="wiki-dl__desc">Each found email prints: <code>✓ John Smith → john@company.com</code>. Not-found contacts are silent (only counted).</div>
           </div>
         </div>
+
+        <h3>GetSales Export</h3>
+        <p>Contacts without email from FindyMail are auto-exported as a GetSales-ready CSV for LinkedIn outreach. Output: 49-column CSV matching the GetSales import format, saved to <code>sofia/get_sales_hub/{dd_mm}/</code>. Maps: full_name, first_name, last_name, position, linkedin_nickname, linkedin_url, company_name, company_domain, cf_location, list_name, tags.</p>
       </section>
 
       <section class="wiki-section" id="code-smartlead">
@@ -3017,7 +3031,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Post-processing</div>
-            <div class="wiki-dl__desc">After parsing GPT's JSON, all steps go through SmartLead formatting: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead ignores plain newlines), em dashes <code>—</code> → regular dashes <code>-</code> (email client compatibility). Same formatting applied in both <code>god_sequence()</code> and <code>load_sequences_from_file()</code>.</div>
+            <div class="wiki-dl__desc">After parsing GPT's JSON, all steps go through SmartLead formatting: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead ignores plain newlines), em dashes <code>—</code> and en dashes <code>–</code> → regular dashes <code>-</code> (email client compatibility). Same formatting applied in both <code>god_sequence()</code> and <code>load_sequences_from_file()</code>.</div>
           </div>
         </div>
 
@@ -3030,16 +3044,16 @@ pattern = r'## Email (\d+[AB]?) .+?\n\n\*\*Subject:\*\* (.+?)\n\n(.*?)(?=\n---|\
 
 # Post-processing for SmartLead compatibility:
 body = body.replace("\n\n", "&lt;br&gt;&lt;br&gt;").replace("\n", "&lt;br&gt;")
-subject = subject.replace("—", "-")  # em dash → regular dash
-body = body.replace("—", "-")</code></pre>
+subject = subject.replace("\u2014", "-").replace("\u2013", "-")
+body = body.replace("\u2014", "-").replace("\u2013", "-")</code></pre>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Line breaks</div>
             <div class="wiki-dl__desc">SmartLead ignores <code>\n</code> in email bodies — requires <code>&lt;br&gt;</code> HTML tags. The parser converts all newlines: <code>\n\n</code> → <code>&lt;br&gt;&lt;br&gt;</code>, then <code>\n</code> → <code>&lt;br&gt;</code>.</div>
           </div>
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Em dash cleanup</div>
-            <div class="wiki-dl__desc">GPT often generates em dashes (<code>—</code>) in subjects and bodies. Some email clients render them incorrectly, so they are replaced with regular dashes (<code>-</code>) for maximum compatibility.</div>
+            <div class="wiki-dl__term">Dash cleanup</div>
+            <div class="wiki-dl__desc">GPT often generates em dashes (<code>—</code>) and en dashes (<code>–</code>) in subjects and bodies. Some email clients render them incorrectly, so both are replaced with regular dashes (<code>-</code>) for maximum compatibility.</div>
           </div>
         </div>
         <p>Generated sequences are saved as markdown for human editing before next use: <code>generated_sequence_{segment}_{date}.md</code>. Operator always reviews before upload — never auto-uploaded. GPT-4o call runs via <code>docker exec</code> against the backend container's OpenAI client.</p>

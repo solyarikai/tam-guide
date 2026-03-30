@@ -2308,7 +2308,7 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаг 10</div>
-            <div class="wiki-dl__desc"><strong>ИМПОРТ ЛЮДЕЙ</strong> — оператор вручную ищет людей (decision-makers) в Apollo People UI используя список таргет-компаний из шага 9. Экспортирует как CSV. Этот шаг импортирует CSV: маппинг колонок Apollo → наш формат, обогащение domain/segment/social_proof, дедупликация.</div>
+            <div class="wiki-dl__desc"><strong>ПОИСК ЛЮДЕЙ</strong> — автоматически ищет ЛПР в Apollo People UI через Puppeteer (<code>apollo_scraper.js</code>). Батчит по 30 доменов, фильтрует по seniority + titles из <code>SEGMENT_PEOPLE_FILTERS</code>. Fallback: <code>--apollo-csv</code> для ручного CSV импорта.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаг 11</div>
@@ -2343,7 +2343,7 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
         <h3>Pipeline Flow (техническая схема)</h3>
 <pre><code>Шаги 0-8:  Backend API сбора (Clay/Apollo → Dedup → Blacklist → Scrape → Classify)
 Шаг 9:     Экспорт таргетов из БД (docker exec psql)
-Шаг 10:    Импорт Apollo People CSV (результаты ручного поиска)
+Шаг 10:    Apollo People UI Search (авто через Puppeteer) или CSV импорт (--apollo-csv fallback)
 Шаг 11:    Обогащение email FindyMail (async, 5 параллельно)
 Шаг 12:    Загрузка в SmartLead (с checkpoints на каждом подшаге)</code></pre>
 
@@ -2529,6 +2529,17 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
             <span class="wiki-timeline__meta wiki-timeline__meta--cheap">GPT-4o-mini ~$0.01–0.05, 10–20 мин</span>
           </div>
 
+          <div class="wiki-timeline__step">
+            <div class="wiki-timeline__header">
+              <span class="wiki-timeline__number">5R</span>
+              <span class="wiki-timeline__title"><code>step5_reanalyze()</code> — Повторная классификация</span>
+            </div>
+            <div class="wiki-timeline__body">
+              Повторный запуск GPT-классификации на тех же скрейпнутых данных с другим промптом — без повторного скрейпинга. Полезно когда target rate слишком низкий или промпт нужно подправить. Запускается через <code>--re-analyze --run-id {N}</code>. Выводит новый target rate и количество таргетов, создаёт gate CP2 для одобрения.
+            </div>
+            <span class="wiki-timeline__meta wiki-timeline__meta--cheap">Та же стоимость что analyze, без ре-скрейпа</span>
+          </div>
+
           <div class="wiki-timeline__step wiki-timeline__step--checkpoint">
             <div class="wiki-timeline__header">
               <span class="wiki-timeline__number">6</span>
@@ -2582,8 +2593,8 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
     # Per-segment разбивка + CSV + Google Sheets:
     # Название Sheet: "{code} | Targets | {segment_code} — {date}"
     # Пример: "ES | Targets | INFLUENCER_PLATFORMS — 2025-01-15"</code></pre>
-        <p><strong>Шаг 10</strong> импортирует контакты из Apollo People CSV экспорта. Маппинг колонок обрабатывает вариации заголовков Apollo CSV:</p>
-        <p><strong>Шаг 10</strong> импортирует контакты из Apollo People CSV. Маппинг колонок обрабатывает вариации заголовков:</p>
+        <p><strong>Шаг 10</strong> имеет два режима: <strong>автоматический</strong> (по умолчанию) — Puppeteer ищет в Apollo People UI, батчит по 30 доменов с titles/seniorities из <code>SEGMENT_PEOPLE_FILTERS</code>; и <strong>ручной CSV</strong> (<code>--apollo-csv</code> fallback). Оба используют один и тот же маппинг колонок:</p>
+        <p>Маппинг колонок обрабатывает вариации заголовков:</p>
 <pre><code>APOLLO_CSV_COLUMNS = {
     "first_name": ["First Name", "first_name"],
     "last_name":  ["Last Name", "last_name"],
@@ -2689,6 +2700,9 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
             <div class="wiki-dl__desc">Каждый найденный email выводит: <code>✓ John Smith → john@company.com</code>. Ненайденные контакты молчат (только считаются).</div>
           </div>
         </div>
+
+        <h3>GetSales Export</h3>
+        <p>Контакты без email после FindyMail автоматически экспортируются в GetSales-ready CSV для LinkedIn outreach. Выход: 49-колоночный CSV в формате импорта GetSales, сохраняется в <code>sofia/get_sales_hub/{dd_mm}/</code>. Маппит: full_name, first_name, last_name, position, linkedin_nickname, linkedin_url, company_name, company_domain, cf_location, list_name, tags.</p>
       </section>
 
       <section class="wiki-section" id="code-smartlead">
@@ -2858,7 +2872,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Пост-обработка</div>
-            <div class="wiki-dl__desc">После парсинга JSON от GPT, все шаги проходят через SmartLead форматирование: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead игнорирует обычные переносы строк), длинные тире <code>—</code> → обычные дефисы <code>-</code> (совместимость с email-клиентами). Та же обработка применяется и в <code>god_sequence()</code>, и в <code>load_sequences_from_file()</code>.</div>
+            <div class="wiki-dl__desc">После парсинга JSON от GPT, все шаги проходят через SmartLead форматирование: <code>\n</code> → <code>&lt;br&gt;</code> (SmartLead игнорирует обычные переносы строк), длинные тире <code>—</code> и короткие тире <code>–</code> → обычные дефисы <code>-</code> (совместимость с email-клиентами). Та же обработка применяется и в <code>god_sequence()</code>, и в <code>load_sequences_from_file()</code>.</div>
           </div>
         </div>
 
@@ -2871,16 +2885,16 @@ pattern = r'## Email (\d+[AB]?) .+?\n\n\*\*Subject:\*\* (.+?)\n\n(.*?)(?=\n---|\
 
 # Постобработка для совместимости со SmartLead:
 body = body.replace("\n\n", "&lt;br&gt;&lt;br&gt;").replace("\n", "&lt;br&gt;")
-subject = subject.replace("—", "-")  # em dash → обычный дефис
-body = body.replace("—", "-")</code></pre>
+subject = subject.replace("\u2014", "-").replace("\u2013", "-")
+body = body.replace("\u2014", "-").replace("\u2013", "-")</code></pre>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Переносы строк</div>
             <div class="wiki-dl__desc">SmartLead игнорирует <code>\n</code> в теле письма — требует HTML-теги <code>&lt;br&gt;</code>. Парсер конвертирует все переносы: <code>\n\n</code> → <code>&lt;br&gt;&lt;br&gt;</code>, затем <code>\n</code> → <code>&lt;br&gt;</code>.</div>
           </div>
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Замена em dash</div>
-            <div class="wiki-dl__desc">GPT часто генерирует длинные тире (<code>—</code>) в темах и телах писем. Некоторые email-клиенты отображают их некорректно, поэтому они заменяются на обычные дефисы (<code>-</code>) для максимальной совместимости.</div>
+            <div class="wiki-dl__term">Замена тире</div>
+            <div class="wiki-dl__desc">GPT часто генерирует длинные тире (<code>—</code>) и короткие тире (<code>–</code>) в темах и телах писем. Некоторые email-клиенты отображают их некорректно, поэтому оба заменяются на обычные дефисы (<code>-</code>) для максимальной совместимости.</div>
           </div>
         </div>
         <p>Сгенерированные секвенции сохраняются как markdown для редактирования человеком перед следующим использованием: <code>generated_sequence_{segment}_{date}.md</code>. Оператор всегда проверяет перед загрузкой — никогда не загружается автоматически. GPT-4o вызов запускается через <code>docker exec</code> против backend контейнера OpenAI client.</p>
