@@ -143,7 +143,7 @@
             <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Режимы ввода</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Утилиты и хелперы</a></li>
-            <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Обновление блэклиста после CP2</a></li>
+            <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Блэклист и дедуп</a></li>
             <li><a href="#code-batching" class="wiki-nav__link" data-section-id="code-batching">Батчинг и авто-pipeline</a></li>
             <li><a href="#code-cli" class="wiki-nav__link" data-section-id="code-cli">CLI-справочник</a></li>
           </ul>
@@ -2284,11 +2284,32 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
           </div>
         </div>
 
-        <h3>Как работает pipeline (простыми словами)</h3>
+        <h3>Шаг 0: Источники компаний (4 варианта)</h3>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Шаги 0–2</div>
-            <div class="wiki-dl__desc"><strong>ПОИСК КОМПАНИЙ</strong> — поиск компаний через Clay/Apollo используя описание Ideal Customer Profile (ICP). Удаляем дубликаты и уже сокращённые компании. Стоимость: Clay ~$0.01 за компанию, Apollo бесплатно (через UI emulator).</div>
+            <div class="wiki-dl__term">A — Clay ICP</div>
+            <div class="wiki-dl__desc"><code>--mode structured</code> / <code>--mode natural</code>. AI (Gemini) преобразует текст ICP в фильтры Clay. Хорошо для первого поиска, когда фильтры не определены. ~$0.01/компания.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">B — Clay Keywords</div>
+            <div class="wiki-dl__desc"><code>--mode keywords</code>. Явный список <code>description_keywords</code> отправляется напрямую в Clay UI (без AI). Быстрее и точнее, чем ICP. Поддерживает <code>description_keywords_exclude</code>. ~$0.01/компания.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">C — Clay Lookalike</div>
+            <div class="wiki-dl__desc"><code>--mode lookalike</code>. Реверс-инженерия фильтров из доменов примерных компаний. ~$0.01/компания.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">D — Apollo Internal API</div>
+            <div class="wiki-dl__desc"><code>--mode apollo</code>. Puppeteer логинится в Apollo, вызывает internal API (<code>q_organization_keyword_tags</code>). Точное совпадение keyword tags. Скрипт: <code>scripts/apollo_companies_search.js</code>. Поддерживает <code>excluded_keywords</code> пост-фильтр, <code>--apollo-profile</code>, resume из частичных результатов. <strong>БЕСПЛАТНО (0 кредитов)</strong>.</div>
+          </div>
+        </div>
+        <p>Все четыре источника выдают список доменов компаний, которые затем поступают в единый pipeline (Шаги 1–10).</p>
+
+        <h3>Шаги 1–10: Единый pipeline</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаги 1–2</div>
+            <div class="wiki-dl__desc"><strong>ДЕДУП И БЛЭКЛИСТ</strong> — удаление компаний, уже найденных в предыдущих ранах, проверка project blacklist. ★ CP1: «Правильный проект? Правильный scope?»</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаги 3–4</div>
@@ -2296,27 +2317,23 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаг 5</div>
-            <div class="wiki-dl__desc"><strong>КЛАССИФИКАЦИЯ</strong> — GPT анализирует сайт каждой компании и решает: это наш клиент или нет? Присваивает сегмент (platform/agency/OTHER) и confidence score.</div>
+            <div class="wiki-dl__desc"><strong>КЛАССИФИКАЦИЯ</strong> — GPT-4o-mini классифицирует каждую компанию: is_target? confidence? segment? ~$0.01–0.05/батч из 500. ★ CP2: «Список компаний правильный?»</div>
           </div>
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Шаги 6–8</div>
-            <div class="wiki-dl__desc"><strong>ПОДГОТОВКА ВЕРИФИКАЦИИ</strong> — подготовка к email-верификации (оценка стоимости). CP3: оператор одобряет расходы перед зарядом FindyMail.</div>
+            <div class="wiki-dl__term">Шаги 6–7</div>
+            <div class="wiki-dl__desc"><strong>ВЕРИФИКАЦИЯ И КОРРЕКТИРОВКА</strong> — оператор + Claude проверяют таргеты GPT в чате. Если точность &lt;90% → корректировка промпта → <code>--re-analyze</code>. Повторять до точности ≥90%.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Шаг 8</div>
+            <div class="wiki-dl__desc"><strong>ПОИСК ЛЮДЕЙ</strong> — Apollo People Search (авто через Puppeteer) или CSV импорт (<code>--apollo-csv</code> fallback). ★ CP3: «Одобрить расходы FindyMail?»</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаг 9</div>
-            <div class="wiki-dl__desc"><strong>ЭКСПОРТ</strong> — экспорт одобренных таргет-компаний из БД. Разбиваем по сегментам, сохраняем CSV локально и в Google Sheets. Эти компании — основа для поиска людей на следующем шаге.</div>
+            <div class="wiki-dl__desc"><strong>ПОИСК EMAIL</strong> — обогащение FindyMail ($0.01/найденный email). Контакты без email → GetSales-ready CSV для LinkedIn outreach.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Шаг 10</div>
-            <div class="wiki-dl__desc"><strong>ПОИСК ЛЮДЕЙ</strong> — автоматически ищет ЛПР в Apollo People UI через Puppeteer (<code>apollo_scraper.js</code>). Батчит по 30 доменов, фильтрует по seniority + titles из <code>SEGMENT_PEOPLE_FILTERS</code>. Fallback: <code>--apollo-csv</code> для ручного CSV импорта.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Шаг 11</div>
-            <div class="wiki-dl__desc"><strong>ПОИСК EMAIL</strong> — FindyMail ищет рабочий email по LinkedIn URL. Платим только за найденные email ($0.01 каждый). Типичный hit rate: 60–80% (из 500 LinkedIn профилей → ~350–400 верифицированных email).</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Шаг 12</div>
-            <div class="wiki-dl__desc"><strong>ЗАГРУЗКА В SMARTLEAD</strong> — создаём кампанию, привязываем email-аккаунты, загружаем лиды, загружаем email-секвенции, устанавливаем расписание. Каждый подшаг требует подтверждения оператора. Кампания НИКОГДА не активируется автоматически.</div>
+            <div class="wiki-dl__desc"><strong>ЗАГРУЗКА В SMARTLEAD</strong> — загрузка лидов в существующие кампании, привязка секвенций, настройка расписания. Кампания НИКОГДА не активируется автоматически.</div>
           </div>
         </div>
 
@@ -2324,34 +2341,48 @@ GROUP BY source_subtype ORDER BY avg DESC;</pre>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP1</div>
-            <div class="wiki-dl__desc">После blacklist check: "Правильный проект? Правильный scope?" — оператор подтверждает, что список таргетов выглядит адекватно, прежде чем начнётся дорогостоящая обработка.</div>
+            <div class="wiki-dl__desc">После blacklist check: «Правильный проект? Правильный scope?» — оператор подтверждает перед дорогостоящей обработкой.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP2</div>
-            <div class="wiki-dl__desc">После классификации: "Список компаний правильный?" — оператор проверяет решения GPT target/non-target. Удаляет false positives.</div>
+            <div class="wiki-dl__desc">После классификации: pipeline паузируется с инструкциями — Шаг 6: верификация с Claude Code; Шаг 7: если точность &lt;90% → корректировка промпта → <code>--re-analyze --run-id {N}</code>. Когда ≥90% → одобрить gate и продолжить.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP3</div>
-            <div class="wiki-dl__desc">Перед FindyMail: "Одобрить расходы?" — показывает оценку стоимости (emails × $0.01). Оператор подтверждает, прежде чем будут потрачены деньги.</div>
+            <div class="wiki-dl__desc">После поиска людей, перед FindyMail: показывает оценку стоимости (контакты × $0.01). Оператор подтверждает, прежде чем будут потрачены деньги.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ Активация</div>
-            <div class="wiki-dl__desc">НИКОГДА не запускается автоматически. Оператор активирует кампанию вручную в SmartLead UI после финального обзора всех настроек.</div>
+            <div class="wiki-dl__desc">НИКОГДА не запускается автоматически. Оператор активирует кампанию вручную в SmartLead UI после финального обзора.</div>
           </div>
         </div>
 
         <h3>Pipeline Flow (техническая схема)</h3>
-<pre><code>Шаги 0-8:  Backend API сбора (Clay/Apollo → Dedup → Blacklist → Scrape → Classify)
-Шаг 9:     Экспорт таргетов из БД (docker exec psql)
-Шаг 10:    Apollo People UI Search (авто через Puppeteer) или CSV импорт (--apollo-csv fallback)
-Шаг 11:    Обогащение email FindyMail (async, 5 параллельно)
-Шаг 12:    Загрузка в SmartLead (с checkpoints на каждом подшаге)</code></pre>
+<pre><code>Шаг 0:     Поиск компаний (Clay ICP / Clay Keywords / Apollo API / Lookalike)
+Шаги 1-2:  Дедуп → Blacklist check → CP1
+Шаги 3-4:  Пре-фильтр → Скрейп сайтов
+Шаг 5:     Классификация GPT → CP2
+Шаги 6-7:  Верификация таргетов + корректировка промпта (в чате с Claude)
+Шаг 8:     Apollo People Search (авто/CSV) → CP3
+Шаг 9:     Обогащение email FindyMail (async, 5 параллельно)
+Шаг 10:    Загрузка в SmartLead (с checkpoints на каждом подшаге)</code></pre>
 
         <h3>Примеры использования</h3>
-<pre><code># Полный pipeline от сбора
+<pre><code># Clay ICP — AI преобразует ICP → фильтры Clay
 python3 universal_pipeline.py --project-id 42 --mode structured --segment influencer_platforms
 
-# Продолжить с импорта Apollo People
+# Clay Keywords — явные ключевые слова, без AI
+python3 universal_pipeline.py --project-id 42 --mode keywords \
+  --filters '{"description_keywords": ["influencer marketing platform", "creator analytics"],
+              "description_keywords_exclude": ["recruitment", "staffing"],
+              "industries": ["Computer Software", "Internet"], "max_results": 5000}'
+
+# Apollo Internal API — БЕСПЛАТНО, точные keyword_tags
+python3 universal_pipeline.py --project-id 42 --mode apollo \
+  --filters '{"keyword_tags": ["influencer marketing platform"],
+              "locations": ["United Kingdom", "India"], "max_pages": 25}'
+
+# Продолжить с поиска людей
 python3 universal_pipeline.py --project-id 42 --from-step people --apollo-csv export.csv
 
 # Поиск похожих компаний
@@ -2572,7 +2603,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
 #   Если "awaiting_scope_ok" → ещё ждёт CP1
 #   Если "gathered" → готово к blacklist check</code></pre>
 
-        <p>После CP2, одобренные таргет-домены добавляются в project blacklist — следующий ран их не найдёт (см. раздел <a href="#code-blacklist-update">Blacklist Update After CP2</a>).</p>
+        <p>После CP2, таргеты экспортируются и pipeline продолжает к поиску людей. Доменный блэклистинг убран — CRM sync обеспечивает дедуп (см. раздел <a href="#code-blacklist-update">Стратегия блэклиста и дедупликации</a>).</p>
       </section>
 
       <section class="wiki-section" id="code-export-import">
@@ -3098,14 +3129,16 @@ def load_state(state_dir) -> dict:
           </div>
         </div>
 
-        <h3>Загрузка в Google Sheets</h3>
-        <p>Каждый CSV-экспорт автоматически загружается в Google Sheets для удобного шеринга с командой. Формат имени: <code>[PROJECT] | [TYPE] | [SEGMENT] — [DATE]</code>.</p>
+        <h3>Google Sheets и Drive Upload</h3>
+        <p>Каждый CSV-экспорт автоматически загружается в Google Sheets через прямой OAuth (аккаунт sofia@getsally.io). Sheets автоматически размещаются в правильной папке Drive по полю TYPE в имени. Токен: <code>~/.claude/google-sheets/token.json</code> или <code>sofia/.google-sheets/token.json</code>.</p>
 <pre><code>def save_csv(path, rows, sheet_name=None):
     # 1. Сохраняет CSV локально через DictWriter
-    # 2. Если sheet_name указан → загрузка в Google Sheets через бэкенд
-    #    docker exec → google_sheets_service.create_and_populate()
-    #    Автошеринг с командой (pn@getsally.io)
-    #    Печатает URL на успех</code></pre>
+    # 2. Если sheet_name → создание Google Sheet через OAuth + Sheets API v4
+    #    _get_gsheets_creds() → авто-обновление истёкших токенов
+    #    _resolve_drive_folder() → размещение в правильной папке по TYPE:
+    #      Leads → folder_id, Import → folder_id, Targets → folder_id, etc.
+    #    GDRIVE_FOLDERS = {"Leads": "...", "Import": "...", "Targets": "...",
+    #                      "Ops": "...", "Analytics": "...", "Archive": "..."}</code></pre>
 
         <h3>Нормализация доменов и компаний</h3>
 <pre><code>def normalize_company(name):
@@ -3142,42 +3175,17 @@ OPENAI_API_KEY      # Для GOD_SEQUENCE — генерация через GPT-
       </section>
 
       <section class="wiki-section" id="code-blacklist-update">
-        <h2>Обновление блэклиста после CP2 <a href="#code-blacklist-update" class="anchor-link">#</a></h2>
-        <p>После одобрения таргетов оператором на Checkpoint 2, их домены немедленно добавляются в <code>project_blacklist</code>. Это предотвращает повторное обнаружение тех же компаний при следующем запуске. <strong>Важный нюанс:</strong> «блэклист» здесь означает все компании, которые уже прошли сбор и обработку — не только те, кому фактически отправили письма. Цель — избежать повторной обработки, а не пометить компании как «плохие».</p>
-<pre><code>def blacklist_approved_targets(config, run_id):
-    # 1. SQL: SELECT DISTINCT domain FROM discovered_companies
-    #    WHERE gathering_run_id = {run_id} AND is_target = true
-    # 2. INSERT INTO project_blacklist (project_id, domain, reason, source)
-    #    VALUES ... ON CONFLICT DO NOTHING
-    # reason = 'target_approved_run_{run_id}'
-    # source = 'pipeline'</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Когда вызывается</div>
-            <div class="wiki-dl__desc">Автоматически после одобрения CP2, перед <code>step6_prepare_verify()</code>. Часть шага "verify" в pipeline flow.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Зачем это нужно</div>
-            <div class="wiki-dl__desc">Без этого повторный запуск pipeline для того же проекта заново найдёт уже одобренные компании — потратит кредиты Clay/Apollo и создаст дубликаты.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">ON CONFLICT DO NOTHING</div>
-            <div class="wiki-dl__desc">Безопасно запускать многократно. Если домен уже в блэклисте — без ошибки, без дубликата.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Выполнение</div>
-            <div class="wiki-dl__desc">Напрямую через <code>docker exec</code> к PostgreSQL — без обёртки бэкенд API для этой операции.</div>
-          </div>
-        </div>
-        <p>Поток в контексте:</p>
+        <h2>Стратегия блэклиста и дедупликации <a href="#code-blacklist-update" class="anchor-link">#</a></h2>
+        <p><strong>Примечание:</strong> <code>blacklist_approved_targets()</code> удалена из pipeline. CRM sync (таблица contacts) уже блокирует компании в активных кампаниях. Блэклистинг на уровне доменов был слишком агрессивным — он мешал находить новых сотрудников в уже обработанных компаниях. Дедуп на Шаге 1 обрабатывает дублирующиеся домены между ранами.</p>
+        <p>Поток после CP2:</p>
         <div class="wiki-state-flow">
           <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP2 одобрен</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">blacklist_approved_targets()</span>
+          <span class="wiki-state-flow__badge">approve_pending_gate()</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">step6_prepare_verify()</span>
+          <span class="wiki-state-flow__badge">step9_export_targets()</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP3</span>
+          <span class="wiki-state-flow__badge">Поиск людей (Шаг 8)</span>
         </div>
       </section>
 

@@ -143,7 +143,7 @@
             <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Input Modes</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Utilities & Helpers</a></li>
-            <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Blacklist Update After CP2</a></li>
+            <li><a href="#code-blacklist-update" class="wiki-nav__link" data-section-id="code-blacklist-update">Blacklist &amp; Dedup</a></li>
             <li><a href="#code-batching" class="wiki-nav__link" data-section-id="code-batching">Batching & Auto-Pipeline</a></li>
             <li><a href="#code-cli" class="wiki-nav__link" data-section-id="code-cli">CLI Reference</a></li>
           </ul>
@@ -2444,39 +2444,56 @@ ORDER BY avg_target_rate DESC;</code></pre>
           </div>
         </div>
 
-        <h3>How the Pipeline Works (Plain Language)</h3>
+        <h3>Step 0: Company Sources (4 options)</h3>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Steps 0–2</div>
-            <div class="wiki-dl__desc"><strong>COMPANY SEARCH</strong> — search for companies via Clay/Apollo using the Ideal Customer Profile (ICP) description. Remove duplicates and companies already contacted. Cost: Clay ~$0.01/company, Apollo free (via UI emulator).</div>
+            <div class="wiki-dl__term">A — Clay ICP</div>
+            <div class="wiki-dl__desc"><code>--mode structured</code> / <code>--mode natural</code>. AI (Gemini) converts ICP text into Clay filters. Good for first search when filters are undefined. ~$0.01/company.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">B — Clay Keywords</div>
+            <div class="wiki-dl__desc"><code>--mode keywords</code>. Explicit <code>description_keywords</code> list sent directly to Clay UI (no AI). Faster and more precise than ICP. Supports <code>description_keywords_exclude</code>. ~$0.01/company.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">C — Clay Lookalike</div>
+            <div class="wiki-dl__desc"><code>--mode lookalike</code>. Reverse-engineers filters from example company domains. ~$0.01/company.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">D — Apollo Internal API</div>
+            <div class="wiki-dl__desc"><code>--mode apollo</code>. Puppeteer logs into Apollo, calls internal API (<code>q_organization_keyword_tags</code>). Exact keyword tag matching. Script: <code>scripts/apollo_companies_search.js</code>. Supports <code>excluded_keywords</code> post-filter, <code>--apollo-profile</code>, resume from partial results. <strong>FREE (0 credits)</strong>.</div>
+          </div>
+        </div>
+        <p>All four sources output a list of company domains, which then feed into the unified pipeline (Steps 1–10).</p>
+
+        <h3>Steps 1–10: Unified Pipeline</h3>
+        <div class="wiki-dl">
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Steps 1–2</div>
+            <div class="wiki-dl__desc"><strong>DEDUP &amp; BLACKLIST</strong> — remove companies already found in previous runs, check against project blacklist. ★ CP1: "Right project? Right scope?"</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Steps 3–4</div>
-            <div class="wiki-dl__desc"><strong>FILTERING &amp; SCRAPING</strong> — remove junk (offline businesses, dead websites, .gov/.edu domains). Download website content for analysis.</div>
+            <div class="wiki-dl__desc"><strong>FILTER &amp; SCRAPE</strong> — remove junk (offline businesses, dead websites, .gov/.edu). Download website content for analysis.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 5</div>
-            <div class="wiki-dl__desc"><strong>CLASSIFICATION</strong> — GPT analyzes each company's website and decides: is this our customer or not? Assigns a segment (platform/agency/OTHER) and confidence score.</div>
+            <div class="wiki-dl__desc"><strong>CLASSIFY</strong> — GPT-4o-mini classifies each company: is_target? confidence? segment? ~$0.01–0.05/batch of 500. ★ CP2: "Company list correct?"</div>
           </div>
           <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Steps 6–8</div>
-            <div class="wiki-dl__desc"><strong>VERIFICATION PREP</strong> — prepare for email verification (cost estimate). CP3: operator approves expenses before FindyMail charges.</div>
+            <div class="wiki-dl__term">Steps 6–7</div>
+            <div class="wiki-dl__desc"><strong>VERIFY &amp; ADJUST</strong> — operator + Claude verify GPT targets in chat. If accuracy &lt;90% → adjust prompt → <code>--re-analyze</code>. Repeat until accuracy ≥90%.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Step 8</div>
+            <div class="wiki-dl__desc"><strong>FIND PEOPLE</strong> — Apollo People Search (auto via Puppeteer) or CSV import (<code>--apollo-csv</code> fallback). ★ CP3: "Approve FindyMail expenses?"</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 9</div>
-            <div class="wiki-dl__desc"><strong>EXPORT</strong> — export approved target companies from the database. Split by segment, save CSV locally and to Google Sheets. These companies are the basis for people search in the next step.</div>
+            <div class="wiki-dl__desc"><strong>FIND EMAIL</strong> — FindyMail enrichment ($0.01/found email). Contacts without email → GetSales-ready CSV for LinkedIn outreach.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 10</div>
-            <div class="wiki-dl__desc"><strong>FIND PEOPLE</strong> — automatically searches for decision-makers in Apollo People UI via Puppeteer (<code>apollo_scraper.js</code>). Batches 30 domains at a time, filters by seniority + titles from <code>SEGMENT_PEOPLE_FILTERS</code>. Fallback: <code>--apollo-csv</code> for manual CSV import.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Step 11</div>
-            <div class="wiki-dl__desc"><strong>FIND EMAIL</strong> — FindyMail searches for work email by LinkedIn profile URL. Pay only for found emails ($0.01 each). Typical hit rate: 60–80% (from 500 LinkedIn profiles → ~350–400 verified emails).</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Step 12</div>
-            <div class="wiki-dl__desc"><strong>SMARTLEAD UPLOAD</strong> — create campaign, attach email accounts, upload leads, upload email sequences, set schedule. Each sub-step requires operator confirmation. Campaign is NEVER auto-activated.</div>
+            <div class="wiki-dl__desc"><strong>SMARTLEAD UPLOAD</strong> — upload leads to existing campaigns, attach sequences, set schedule. Campaign is NEVER auto-activated.</div>
           </div>
         </div>
 
@@ -2484,34 +2501,48 @@ ORDER BY avg_target_rate DESC;</code></pre>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP1</div>
-            <div class="wiki-dl__desc">After blacklist check: "Right project? Right scope?" — operator confirms the target list looks reasonable before expensive processing.</div>
+            <div class="wiki-dl__desc">After blacklist check: "Right project? Right scope?" — operator confirms before expensive processing.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP2</div>
-            <div class="wiki-dl__desc">After classification: "Company list correct?" — operator reviews GPT's target/non-target decisions. Removes false positives.</div>
+            <div class="wiki-dl__desc">After classification: pipeline pauses with instructions — Step 6: verify with Claude Code; Step 7: if accuracy &lt;90% → adjust prompt → <code>--re-analyze --run-id {N}</code>. When ≥90% → approve gate and resume.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ CP3</div>
-            <div class="wiki-dl__desc">Before FindyMail: "Approve expenses?" — shows estimated cost (emails × $0.01). Operator confirms before money is spent.</div>
+            <div class="wiki-dl__desc">After people search, before FindyMail: shows estimated cost (contacts × $0.01). Operator confirms before money is spent.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">★ Activation</div>
-            <div class="wiki-dl__desc">NEVER runs automatically. Operator activates campaign manually in SmartLead UI after final review of all settings.</div>
+            <div class="wiki-dl__desc">NEVER runs automatically. Operator activates campaign manually in SmartLead UI after final review.</div>
           </div>
         </div>
 
         <h3>Pipeline Flow (Technical)</h3>
-<pre><code>Steps 0-8:  Backend gathering API (Clay/Apollo → Dedup → Blacklist → Scrape → Classify)
-Step 9:     Export targets from DB (via docker exec psql)
-Step 10:    Apollo People UI Search (auto via Puppeteer) or CSV import (--apollo-csv fallback)
-Step 11:    FindyMail email enrichment (async, 5 concurrent)
-Step 12:    SmartLead upload (with per-sub-step checkpoints)</code></pre>
+<pre><code>Step 0:     Company search (Clay ICP / Clay Keywords / Apollo API / Lookalike)
+Steps 1-2:  Dedup → Blacklist check → CP1
+Steps 3-4:  Pre-filter → Scrape websites
+Step 5:     GPT classification → CP2
+Steps 6-7:  Verify targets + adjust prompt (in chat with Claude)
+Step 8:     Apollo People Search (auto/CSV) → CP3
+Step 9:     FindyMail email enrichment (async, 5 concurrent)
+Step 10:    SmartLead upload (with per-sub-step checkpoints)</code></pre>
 
         <h3>Usage Examples</h3>
-<pre><code># Full pipeline from gathering
+<pre><code># Clay ICP — AI maps ICP → Clay filters
 python3 universal_pipeline.py --project-id 42 --mode structured --segment influencer_platforms
 
-# Resume from Apollo import
+# Clay Keywords — explicit keywords, no AI
+python3 universal_pipeline.py --project-id 42 --mode keywords \
+  --filters '{"description_keywords": ["influencer marketing platform", "creator analytics"],
+              "description_keywords_exclude": ["recruitment", "staffing"],
+              "industries": ["Computer Software", "Internet"], "max_results": 5000}'
+
+# Apollo Internal API — FREE, exact keyword_tags
+python3 universal_pipeline.py --project-id 42 --mode apollo \
+  --filters '{"keyword_tags": ["influencer marketing platform"],
+              "locations": ["United Kingdom", "India"], "max_pages": 25}'
+
+# Resume from people search
 python3 universal_pipeline.py --project-id 42 --from-step people --apollo-csv export.csv
 
 # Lookalike search
@@ -2732,7 +2763,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
 #   If "awaiting_scope_ok" → still waiting for CP1
 #   If "gathered" → ready for blacklist check</code></pre>
 
-        <p>After CP2, approved target domains are added to project blacklist — preventing next run from re-gathering them (see <a href="#code-blacklist-update">Blacklist Update After CP2</a> section).</p>
+        <p>After CP2, targets are exported and the pipeline continues to people search. Domain blacklisting was removed — CRM sync handles dedup (see <a href="#code-blacklist-update">Blacklist &amp; Dedup Strategy</a>).</p>
       </section>
 
       <section class="wiki-section" id="code-export-import">
@@ -3257,14 +3288,16 @@ def load_state(state_dir) -> dict:
           </div>
         </div>
 
-        <h3>Google Sheets Upload</h3>
-        <p>Every CSV export is automatically uploaded to Google Sheets for easy sharing with the team. Naming convention: <code>[PROJECT] | [TYPE] | [SEGMENT] — [DATE]</code>.</p>
+        <h3>Google Sheets &amp; Drive Upload</h3>
+        <p>Every CSV export is automatically uploaded to Google Sheets via direct OAuth (sofia@getsally.io account). Sheets are auto-placed in the correct Drive folder based on the TYPE field in the name. Token: <code>~/.claude/google-sheets/token.json</code> or <code>sofia/.google-sheets/token.json</code>.</p>
 <pre><code>def save_csv(path, rows, sheet_name=None):
     # 1. Save CSV locally with DictWriter
-    # 2. If sheet_name provided → upload to Google Sheets via backend
-    #    Uses docker exec → google_sheets_service.create_and_populate()
-    #    Auto-shares with team (pn@getsally.io)
-    #    Prints sheet URL on success</code></pre>
+    # 2. If sheet_name → create Google Sheet via OAuth + Sheets API v4
+    #    _get_gsheets_creds() → auto-refresh expired tokens
+    #    _resolve_drive_folder() → place in correct folder by TYPE:
+    #      Leads → folder_id, Import → folder_id, Targets → folder_id, etc.
+    #    GDRIVE_FOLDERS = {"Leads": "...", "Import": "...", "Targets": "...",
+    #                      "Ops": "...", "Analytics": "...", "Archive": "..."}</code></pre>
 
         <h3>Domain &amp; Company Normalization</h3>
 <pre><code>def normalize_company(name):
@@ -3301,42 +3334,17 @@ OPENAI_API_KEY      # Used by GOD_SEQUENCE for GPT-4o email generation</code></p
       </section>
 
       <section class="wiki-section" id="code-blacklist-update">
-        <h2>Blacklist Update After CP2 <a href="#code-blacklist-update" class="anchor-link">#</a></h2>
-        <p>After the operator approves targets at Checkpoint 2, their domains are immediately added to <code>project_blacklist</code>. This prevents the next gathering run from re-discovering the same companies. <strong>Important nuance:</strong> "blacklist" here means all companies that have already gone through gathering and processing — not just those who were actually emailed. The goal is to avoid re-processing, not to mark companies as "bad".</p>
-<pre><code>def blacklist_approved_targets(config, run_id):
-    # 1. SQL: SELECT DISTINCT domain FROM discovered_companies
-    #    WHERE gathering_run_id = {run_id} AND is_target = true
-    # 2. INSERT INTO project_blacklist (project_id, domain, reason, source)
-    #    VALUES ... ON CONFLICT DO NOTHING
-    # reason = 'target_approved_run_{run_id}'
-    # source = 'pipeline'</code></pre>
-        <div class="wiki-dl">
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">When called</div>
-            <div class="wiki-dl__desc">Automatically after CP2 approval, before <code>step6_prepare_verify()</code>. Part of the "verify" step in the pipeline flow.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Why it matters</div>
-            <div class="wiki-dl__desc">Without this, running the pipeline again for the same project would re-gather already-approved companies — wasting Clay/Apollo credits and creating duplicate work.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">ON CONFLICT DO NOTHING</div>
-            <div class="wiki-dl__desc">Safe to run multiple times. If a domain is already blacklisted — no error, no duplicate entry.</div>
-          </div>
-          <div class="wiki-dl__item">
-            <div class="wiki-dl__term">Execution</div>
-            <div class="wiki-dl__desc">Runs directly via <code>docker exec</code> against PostgreSQL — no backend API wrapper for this operation.</div>
-          </div>
-        </div>
-        <p>Flow in context:</p>
+        <h2>Blacklist &amp; Dedup Strategy <a href="#code-blacklist-update" class="anchor-link">#</a></h2>
+        <p><strong>Note:</strong> <code>blacklist_approved_targets()</code> was removed from the pipeline. CRM sync (contacts table) already blocks companies in active campaigns. Domain-level blacklisting was too aggressive — it prevented finding new employees at already-targeted companies. Dedup at Step 1 handles duplicate domains across runs.</p>
+        <p>Flow after CP2:</p>
         <div class="wiki-state-flow">
           <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP2 approved</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">blacklist_approved_targets()</span>
+          <span class="wiki-state-flow__badge">approve_pending_gate()</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge">step6_prepare_verify()</span>
+          <span class="wiki-state-flow__badge">step9_export_targets()</span>
           <span class="wiki-state-flow__arrow">→</span>
-          <span class="wiki-state-flow__badge wiki-state-flow__badge--checkpoint">CP3</span>
+          <span class="wiki-state-flow__badge">People Search (Step 8)</span>
         </div>
       </section>
 
