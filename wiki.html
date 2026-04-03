@@ -136,10 +136,10 @@
           <ul class="wiki-nav__list">
             <li><a href="#code-overview" class="wiki-nav__link" data-section-id="code-overview">Script Overview</a></li>
             <li><a href="#code-config" class="wiki-nav__link" data-section-id="code-config">ProjectConfig</a></li>
-            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Gathering (Steps 0–7)</a></li>
-            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">People Search &amp; Import (Step 8)</a></li>
-            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (Step 9)</a></li>
-            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead Upload (Step 10)</a></li>
+            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Gathering (Steps 0–8)</a></li>
+            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">People Search &amp; Import (Step 9)</a></li>
+            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (Step 10)</a></li>
+            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead Upload (Steps 11–12)</a></li>
             <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Input Modes</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Utilities & Helpers</a></li>
@@ -2463,9 +2463,9 @@ ORDER BY avg_target_rate DESC;</code></pre>
             <div class="wiki-dl__desc"><code>--mode apollo</code>. Puppeteer logs into Apollo, calls internal API (<code>q_organization_keyword_tags</code>). Exact keyword tag matching. Script: <code>scripts/apollo_companies_search.js</code>. Supports <code>excluded_keywords</code> post-filter, <code>--apollo-profile</code>, resume from partial results. <strong>FREE (0 credits)</strong>.</div>
           </div>
         </div>
-        <p>All four sources output a list of company domains, which then feed into the unified pipeline (Steps 1–10).</p>
+        <p>All four sources output a list of company domains, which then feed into the unified pipeline (Steps 1–12).</p>
 
-        <h3>Steps 1–10: Unified Pipeline</h3>
+        <h3>Steps 1–12: Unified Pipeline</h3>
         <div class="wiki-dl">
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Steps 1–2</div>
@@ -2485,15 +2485,23 @@ ORDER BY avg_target_rate DESC;</code></pre>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 8</div>
-            <div class="wiki-dl__desc"><strong>FIND PEOPLE</strong> — Apollo People Search (auto via Puppeteer) or CSV import (<code>--apollo-csv</code> fallback). ★ CP3: "Approve FindyMail expenses?"</div>
+            <div class="wiki-dl__desc"><strong>EXPORT TARGETS</strong> — export approved target companies from backend to <code>targets.json</code>. Approve CP2 gate → export companies for people search.</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 9</div>
-            <div class="wiki-dl__desc"><strong>FIND EMAIL</strong> — FindyMail enrichment ($0.01/found email). Contacts without email → GetSales-ready CSV for LinkedIn outreach.</div>
+            <div class="wiki-dl__desc"><strong>FIND PEOPLE</strong> — Apollo People Search (auto via Puppeteer) or CSV import (<code>--apollo-csv</code> fallback). ★ CP3: "Approve FindyMail expenses?"</div>
           </div>
           <div class="wiki-dl__item">
             <div class="wiki-dl__term">Step 10</div>
-            <div class="wiki-dl__desc"><strong>SMARTLEAD UPLOAD</strong> — upload leads to existing campaigns, attach sequences, set schedule. Campaign is NEVER auto-activated.</div>
+            <div class="wiki-dl__desc"><strong>FIND EMAIL</strong> — FindyMail enrichment ($0.01/found email). Contacts without email → GetSales-ready CSV for LinkedIn outreach.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Step 11</div>
+            <div class="wiki-dl__desc"><strong>SEQUENCES</strong> — load email sequences for campaign. Priority: markdown file (human-written) > GOD_SEQUENCE (GPT-4o auto-generated 5-step sequence). Operator reviews texts before upload.</div>
+          </div>
+          <div class="wiki-dl__item">
+            <div class="wiki-dl__term">Step 12</div>
+            <div class="wiki-dl__desc"><strong>SMARTLEAD UPLOAD</strong> — create campaign, attach email accounts, upload leads, upload sequences, set schedule. Campaign is NEVER auto-activated.</div>
           </div>
         </div>
 
@@ -2523,9 +2531,11 @@ Steps 1-2:  Dedup → Blacklist check → CP1
 Steps 3-4:  Pre-filter → Scrape websites
 Step 5:     GPT classification → CP2
 Steps 6-7:  Verify targets + adjust prompt (in chat with Claude)
-Step 8:     Apollo People Search (auto/CSV) → CP3
-Step 9:     FindyMail email enrichment (async, 5 concurrent)
-Step 10:    SmartLead upload (with per-sub-step checkpoints)</code></pre>
+Step 8:     Export targets from backend
+Step 9:     Apollo People Search (auto/CSV) → CP3
+Step 10:    FindyMail email enrichment (async, 5 concurrent)
+Step 11:    Sequences (markdown file or GOD_SEQUENCE)
+Step 12:    SmartLead upload (with per-sub-step checkpoints)</code></pre>
 
         <h3>Usage Examples</h3>
 <pre><code># Clay ICP — AI maps ICP → Clay filters
@@ -2651,7 +2661,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-gathering">
-        <h2>Gathering — Steps 0–7 <a href="#code-gathering" class="anchor-link">#</a></h2>
+        <h2>Gathering — Steps 0–8 <a href="#code-gathering" class="anchor-link">#</a></h2>
         <p>Sequential company processing: search for companies via Clay/Apollo using ICP description, remove duplicates and already-contacted ones, filter out junk, scrape websites, classify with GPT, prepare for email verification. Each step is a standalone function that calls the backend API. Operator confirms at 3 checkpoints before money is spent.</p>
 
         <div class="wiki-timeline">
@@ -2767,7 +2777,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-export-import">
-        <h2>People Search &amp; Import — Step 8 <a href="#code-export-import" class="anchor-link">#</a></h2>
+        <h2>People Search &amp; Import — Step 9 <a href="#code-export-import" class="anchor-link">#</a></h2>
         <h3>Step 9 — Export Target Companies</h3>
         <p>Exports all companies that passed classification (<code>is_target=true</code>) from the database. These companies are the basis for people search in the next step. Splits by segment, saves CSV locally and uploads to Google Sheets.</p>
 <pre><code>def step9_export_targets(config, force=False):
@@ -2784,7 +2794,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
     # Per-segment breakdown + CSV + Google Sheets:
     # Sheet naming: "{code} | Targets | {segment_code} — {date}"
     # Example: "ES | Targets | INFLUENCER_PLATFORMS — 2025-01-15"</code></pre>
-        <p><strong>Step 10</strong> has two modes: <strong>automated</strong> (default) — Puppeteer searches Apollo People UI, batching 30 domains per request with segment-specific titles/seniorities from <code>SEGMENT_PEOPLE_FILTERS</code>; and <strong>manual CSV</strong> (<code>--apollo-csv</code> fallback). Both use the same column mapping:</p>
+        <p><strong>Step 9</strong> has two modes: <strong>automated</strong> (default) — Puppeteer searches Apollo People UI, batching 30 domains per request with segment-specific titles/seniorities from <code>SEGMENT_PEOPLE_FILTERS</code>; and <strong>manual CSV</strong> (<code>--apollo-csv</code> fallback). Both use the same column mapping:</p>
 <pre><code>APOLLO_CSV_COLUMNS = {
     "first_name": ["First Name", "first_name"],
     "last_name":  ["Last Name", "last_name"],
@@ -2828,7 +2838,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-findymail">
-        <h2>FindyMail — Step 9 <a href="#code-findymail" class="anchor-link">#</a></h2>
+        <h2>FindyMail — Step 10 <a href="#code-findymail" class="anchor-link">#</a></h2>
         <p>For each person with a LinkedIn URL — FindyMail searches for their work email. Payment: $0.01 per each <strong>found</strong> email. Not found — free. Result: two files — (1) "Verified Emails" — people with email, ready for SmartLead; (2) "No Email (LinkedIn only)" — people without email, can be worked via LinkedIn outreach. Both saved locally and to Google Sheets.</p>
 
         <h3>find_email() — Single Request</h3>
@@ -2896,7 +2906,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-smartlead">
-        <h2>SmartLead Upload — Step 10 <a href="#code-smartlead" class="anchor-link">#</a></h2>
+        <h2>SmartLead Upload — Steps 11–12 <a href="#code-smartlead" class="anchor-link">#</a></h2>
         <p>Final step — prepare and launch email campaign. Contacts are first deduped by email, then grouped by segment. One campaign per segment. Every sub-step requires operator confirmation. Campaign is <strong>NEVER auto-activated</strong> — the operator checks everything in SmartLead UI and presses the button themselves.</p>
 
         <h3>Pre-processing</h3>
