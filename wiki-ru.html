@@ -136,10 +136,10 @@
           <ul class="wiki-nav__list">
             <li><a href="#code-overview" class="wiki-nav__link" data-section-id="code-overview">Обзор скрипта</a></li>
             <li><a href="#code-config" class="wiki-nav__link" data-section-id="code-config">ProjectConfig</a></li>
-            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Сбор (шаги 0–8)</a></li>
-            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">Экспорт и импорт (9–10)</a></li>
-            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (шаг 11)</a></li>
-            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead (шаг 12)</a></li>
+            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Сбор (шаги 0–7)</a></li>
+            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">Поиск людей и импорт (шаг 8)</a></li>
+            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (шаг 9)</a></li>
+            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead (шаг 10)</a></li>
             <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Режимы ввода</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Утилиты и хелперы</a></li>
@@ -2491,7 +2491,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-gathering">
-        <h2>Сбор — шаги 0–8 <a href="#code-gathering" class="anchor-link">#</a></h2>
+        <h2>Сбор — шаги 0–7 <a href="#code-gathering" class="anchor-link">#</a></h2>
         <p>Последовательная обработка компаний: поиск компаний через Clay/Apollo используя описание ICP, удаление дубликатов и уже сокращённых, фильтрация мусора, скрейпинг сайтов, классификация через GPT, подготовка к email-верификации. Каждый шаг — отдельная функция, которая вызывает backend API. Оператор подтверждает на 3 checkpoints перед тем, как будут потрачены деньги.</p>
 
         <div class="wiki-timeline">
@@ -2607,7 +2607,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-export-import">
-        <h2>Экспорт и импорт — шаги 9–10 <a href="#code-export-import" class="anchor-link">#</a></h2>
+        <h2>Поиск людей и импорт — шаг 8 <a href="#code-export-import" class="anchor-link">#</a></h2>
         <h3>Шаг 9 — Экспорт таргет-компаний</h3>
         <p>Экспортирует все компании, которые прошли классификацию (<code>is_target=true</code>) из БД. Эти компании — основа для поиска людей на следующем шаге. Разбивает по сегментам, сохраняет CSV локально и загружает в Google Sheets.</p>
 <pre><code>def step9_export_targets(config, force=False):
@@ -2669,7 +2669,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-findymail">
-        <h2>FindyMail — шаг 11 <a href="#code-findymail" class="anchor-link">#</a></h2>
+        <h2>FindyMail — шаг 9 <a href="#code-findymail" class="anchor-link">#</a></h2>
         <p>Для каждого человека с LinkedIn URL — FindyMail ищет рабочий email. Платим: $0.01 за каждый <strong>найденный</strong> email. Не найден — бесплатно. Результат: два файла — (1) "Verified Emails" — люди с email, готовые для SmartLead; (2) "No Email (LinkedIn only)" — люди без email, можно работать через LinkedIn. Оба сохранены локально и в Google Sheets.</p>
 
         <h3>find_email() — одиночный запрос</h3>
@@ -2737,7 +2737,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-smartlead">
-        <h2>SmartLead Upload — шаг 12 <a href="#code-smartlead" class="anchor-link">#</a></h2>
+        <h2>SmartLead Upload — шаг 10 <a href="#code-smartlead" class="anchor-link">#</a></h2>
         <p>Финальный шаг — подготовка и запуск email кампании. Контакты сначала дедупируются по email, затем группируются по сегментам. Одна кампания на сегмент. Каждый подшаг требует подтверждения оператора. Кампания <strong>НИКОГДА не активируется автоматически</strong> — оператор проверяет всё в SmartLead UI и нажимает кнопку сам.</p>
 
         <h3>Pre-processing</h3>

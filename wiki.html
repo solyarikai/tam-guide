@@ -136,10 +136,10 @@
           <ul class="wiki-nav__list">
             <li><a href="#code-overview" class="wiki-nav__link" data-section-id="code-overview">Script Overview</a></li>
             <li><a href="#code-config" class="wiki-nav__link" data-section-id="code-config">ProjectConfig</a></li>
-            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Gathering (Steps 0–8)</a></li>
-            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">Export & Import (Steps 9–10)</a></li>
-            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (Step 11)</a></li>
-            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead Upload (Step 12)</a></li>
+            <li><a href="#code-gathering" class="wiki-nav__link" data-section-id="code-gathering">Gathering (Steps 0–7)</a></li>
+            <li><a href="#code-export-import" class="wiki-nav__link" data-section-id="code-export-import">People Search &amp; Import (Step 8)</a></li>
+            <li><a href="#code-findymail" class="wiki-nav__link" data-section-id="code-findymail">FindyMail (Step 9)</a></li>
+            <li><a href="#code-smartlead" class="wiki-nav__link" data-section-id="code-smartlead">SmartLead Upload (Step 10)</a></li>
             <li><a href="#code-god-sequence" class="wiki-nav__link" data-section-id="code-god-sequence">GOD_SEQUENCE</a></li>
             <li><a href="#code-modes" class="wiki-nav__link" data-section-id="code-modes">Input Modes</a></li>
             <li><a href="#code-utilities" class="wiki-nav__link" data-section-id="code-utilities">Utilities & Helpers</a></li>
@@ -2651,7 +2651,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-gathering">
-        <h2>Gathering — Steps 0–8 <a href="#code-gathering" class="anchor-link">#</a></h2>
+        <h2>Gathering — Steps 0–7 <a href="#code-gathering" class="anchor-link">#</a></h2>
         <p>Sequential company processing: search for companies via Clay/Apollo using ICP description, remove duplicates and already-contacted ones, filter out junk, scrape websites, classify with GPT, prepare for email verification. Each step is a standalone function that calls the backend API. Operator confirms at 3 checkpoints before money is spent.</p>
 
         <div class="wiki-timeline">
@@ -2767,7 +2767,7 @@ python3 universal_pipeline.py --project-id 42 --mode structured --segment agenci
       </section>
 
       <section class="wiki-section" id="code-export-import">
-        <h2>Export &amp; Import — Steps 9–10 <a href="#code-export-import" class="anchor-link">#</a></h2>
+        <h2>People Search &amp; Import — Step 8 <a href="#code-export-import" class="anchor-link">#</a></h2>
         <h3>Step 9 — Export Target Companies</h3>
         <p>Exports all companies that passed classification (<code>is_target=true</code>) from the database. These companies are the basis for people search in the next step. Splits by segment, saves CSV locally and uploads to Google Sheets.</p>
 <pre><code>def step9_export_targets(config, force=False):
@@ -2828,7 +2828,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-findymail">
-        <h2>FindyMail — Step 11 <a href="#code-findymail" class="anchor-link">#</a></h2>
+        <h2>FindyMail — Step 9 <a href="#code-findymail" class="anchor-link">#</a></h2>
         <p>For each person with a LinkedIn URL — FindyMail searches for their work email. Payment: $0.01 per each <strong>found</strong> email. Not found — free. Result: two files — (1) "Verified Emails" — people with email, ready for SmartLead; (2) "No Email (LinkedIn only)" — people without email, can be worked via LinkedIn outreach. Both saved locally and to Google Sheets.</p>
 
         <h3>find_email() — Single Request</h3>
@@ -2896,7 +2896,7 @@ python3 universal_pipeline.py --project-id 42 --from-step people \
       </section>
 
       <section class="wiki-section" id="code-smartlead">
-        <h2>SmartLead Upload — Step 12 <a href="#code-smartlead" class="anchor-link">#</a></h2>
+        <h2>SmartLead Upload — Step 10 <a href="#code-smartlead" class="anchor-link">#</a></h2>
         <p>Final step — prepare and launch email campaign. Contacts are first deduped by email, then grouped by segment. One campaign per segment. Every sub-step requires operator confirmation. Campaign is <strong>NEVER auto-activated</strong> — the operator checks everything in SmartLead UI and presses the button themselves.</p>
 
         <h3>Pre-processing</h3>
